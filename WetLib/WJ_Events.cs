@@ -130,7 +130,7 @@ namespace WetLib
         /// <summary>
         /// Ranking per l'evento OUT_OF_CONTROL
         /// </summary>
-        const double OUT_OF_CONTROL_RANKING = 100.0d;
+        const double OUT_OF_CONTROL_RANKING = 1.0d;
 
         #endregion
 
@@ -205,7 +205,7 @@ namespace WetLib
                     {
                         // Acquisisco l'ID della misura
                         int id_measure = Convert.ToInt32(measure["measures_id_measures"]);
-                        int id_odbcdsn = Convert.ToInt32(measure["measures_connections_id_odbcdsn"]);                        
+                        int id_odbcdsn = Convert.ToInt32(measure["measures_connections_id_odbcdsn"]);
                         // Leggo l'ultimo allarme della misura
                         DataTable alarms_table = wet_db.ExecCustomQuery("SELECT * FROM measures_alarms WHERE measures_id_measures = " + id_measure + " ORDER BY `timestamp` DESC LIMIT 1");
                         if (alarms_table.Rows.Count > 0)
@@ -218,7 +218,7 @@ namespace WetLib
                         Sleep(100);
                     }
 
-                    // Se c'è almeno un allarme lo gestisco e chreo l'evento
+                    // Se c'è almeno un allarme lo gestisco e creo l'evento
                     if (alarms.Count > 0)
                     {
                         // Inizializzo la struttura di un evento
@@ -255,7 +255,7 @@ namespace WetLib
                             ReportEvent(ev);
                         }
                         // Non processo ulteriori eventi, esco
-                        return;
+                        continue;
                     }
 
                     #endregion
