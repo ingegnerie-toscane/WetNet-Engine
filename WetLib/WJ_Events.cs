@@ -238,7 +238,7 @@ namespace WetLib
                         if (lasts.Length > 0)
                         {
                             if (lasts[0].type == EventTypes.OUT_OF_CONTROL)
-                                ev.duration = lasts[0].duration++;
+                                ev.duration = ++lasts[0].duration;
                         }
                         // Ciclo per tutti gli allarmi
                         for (int ii = 0; ii < alarms.Count; ii++)
@@ -486,7 +486,7 @@ namespace WetLib
                                             if (lasts_no_events.Length > 0)
                                             {
                                                 if (lasts_no_events[0].type == EventTypes.NO_EVENT)
-                                                    ev.duration = lasts_no_events[0].duration++;
+                                                    ev.duration = ++lasts_no_events[0].duration;
                                             }
                                         }
                                         // Scrivo l'evento e lo riporto
@@ -763,7 +763,7 @@ namespace WetLib
                                         if (lasts_no_events.Length > 0)
                                         {
                                             if (lasts_no_events[0].type == EventTypes.NO_EVENT)
-                                                ev.duration = lasts_no_events[0].duration++;
+                                                ev.duration = ++lasts_no_events[0].duration;
                                         }
                                     }
                                     // Scrivo l'evento e lo riporto
@@ -897,7 +897,7 @@ namespace WetLib
         void ReadLastPastEvents(int id_district, int number, out Event[] events)
         {
             // Calcolo giorno di inizio e giorno di fine
-            DateTime first_day = DateTime.Now.Date.Subtract(new TimeSpan(number, 0, 0, 0));
+            DateTime first_day = DateTime.Now.Date.Subtract(new TimeSpan(number + 1, 0, 0, 0));
             // Acquisisco la lista degli ultimi eventi
             DataTable events_table = wet_db.ExecCustomQuery("SELECT * FROM districts_events WHERE districts_id_districts = " + id_district.ToString() +
                 " AND `day` >= '" + first_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
