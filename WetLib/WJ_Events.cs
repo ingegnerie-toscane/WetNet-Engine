@@ -236,7 +236,10 @@ namespace WetLib
                         Event[] lasts;
                         ReadLastPastEvents(id_district, 1, out lasts);
                         if (lasts.Length > 0)
-                            ev.ranking = lasts[0].duration++;
+                        {
+                            if (lasts[0].type == EventTypes.OUT_OF_CONTROL)
+                                ev.duration = lasts[0].duration++;
+                        }
                         // Ciclo per tutti gli allarmi
                         for (int ii = 0; ii < alarms.Count; ii++)
                         {
@@ -247,7 +250,7 @@ namespace WetLib
                         // Controllo che non sia già presente un evento uguale per il giorno corrente
                         Event[] actual_day_events;
                         ReadActualEvent(id_district, out actual_day_events);
-                        bool can_write = !actual_day_events.Any(x => x.type == ev.type);
+                        bool can_write = !actual_day_events.Any();
                         // Scrivo l'evento
                         if (can_write)
                         {
@@ -470,10 +473,23 @@ namespace WetLib
                                     // Controllo che non sia già presente un evento uguale per il giorno corrente
                                     Event[] actual_day_events;
                                     ReadActualEvent(id_district, out actual_day_events);
-                                    bool can_write = !actual_day_events.Any(x => x.type == ev.type);
+                                    bool can_write = !actual_day_events.Any();
                                     // Scrivo l'evento
                                     if (can_write)
                                     {
+                                        // Se l'evento è di tipo NO_EVENT, aggiungo la durata in giorni
+                                        if (ev.type == EventTypes.NO_EVENT)
+                                        {
+                                            // Controllo se ci sono già altri eventi uguali pregressi
+                                            Event[] lasts_no_events;
+                                            ReadLastPastEvents(id_district, 1, out lasts_no_events);
+                                            if (lasts_no_events.Length > 0)
+                                            {
+                                                if (lasts_no_events[0].type == EventTypes.NO_EVENT)
+                                                    ev.duration = lasts_no_events[0].duration++;
+                                            }
+                                        }
+                                        // Scrivo l'evento e lo riporto
                                         AppendEvent(ev);
                                         ReportEvent(ev);
                                     }
@@ -734,10 +750,23 @@ namespace WetLib
                                 // Controllo che non sia già presente un evento uguale per il giorno corrente
                                 Event[] actual_day_events;
                                 ReadActualEvent(id_district, out actual_day_events);
-                                bool can_write = !actual_day_events.Any(x => x.type == ev.type);
+                                bool can_write = !actual_day_events.Any();
                                 // Scrivo l'evento
                                 if (can_write)
                                 {
+                                    // Se l'evento è di tipo NO_EVENT, aggiungo la durata in giorni
+                                    if (ev.type == EventTypes.NO_EVENT)
+                                    {
+                                        // Controllo se ci sono già altri eventi uguali pregressi
+                                        Event[] lasts_no_events;
+                                        ReadLastPastEvents(id_district, 1, out lasts_no_events);
+                                        if (lasts_no_events.Length > 0)
+                                        {
+                                            if (lasts_no_events[0].type == EventTypes.NO_EVENT)
+                                                ev.duration = lasts_no_events[0].duration++;
+                                        }
+                                    }
+                                    // Scrivo l'evento e lo riporto
                                     AppendEvent(ev);
                                     ReportEvent(ev);
                                 }
