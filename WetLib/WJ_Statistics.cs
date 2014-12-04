@@ -276,6 +276,8 @@ namespace WetLib
                         // Acquisisco l'ID del distretto
                         int id_district = Convert.ToInt32(district["id_districts"]);
                         double alpha = Convert.ToDouble(district["alpha_emitter_exponent"]);
+                        double household_night_use = Convert.ToDouble(district["household_night_use"]);
+                        double not_household_night_use = Convert.ToDouble(district["not_household_night_use"]);
                         // Leggo l'ultimo giorno scritto sulle statistiche
                         DateTime first_day = DateTime.MinValue;
                         DataTable first_day_table = wet_db.ExecCustomQuery("SELECT * FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `day` DESC LIMIT 1");
@@ -319,7 +321,7 @@ namespace WetLib
                             if (current_statistics.Rows.Count == 0)
                             {
                                 // Creo il record
-                                int count = wet_db.ExecCustomCommand("INSERT INTO districts_day_statistic VALUES ('" + current_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "', " + (WetUtility.IsHolyday(current_day) ? ((int)DayTypes.holyday).ToString() : ((int)DayTypes.workday).ToString()) + ", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, " + id_district + ")");
+                                int count = wet_db.ExecCustomCommand("INSERT INTO districts_day_statistic VALUES ('" + current_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "', " + (WetUtility.IsHolyday(current_day) ? ((int)DayTypes.holyday).ToString() : ((int)DayTypes.workday).ToString()) + ", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, " + id_district + ")");
                                 if (count != 1)
                                     throw new Exception("Unattempted error while adding new district statistic record!");
                                 current_statistics = wet_db.ExecCustomQuery("SELECT * FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " AND `day` = '" + current_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
@@ -435,6 +437,11 @@ namespace WetLib
                                 if (count != 1)
                                     throw new Exception("Unattempted error while updating district statistic record!");
                             }
+                            // Calcolo il consumo notturno ideale
+                            double ideal_night_use = household_night_use + not_household_night_use;
+                            int cc = wet_db.ExecCustomCommand("UPDATE districts_day_statistic SET ideal_night_use = " + ideal_night_use.ToString().Replace(',', '.') + " WHERE `day` = '" + current_day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' AND districts_id_districts = " + id_district.ToString());
+                            if (cc != 1)
+                                throw new Exception("Unattempted error while updating district statistic record!");
 
                             // Popolo il profilo giornaliero delle perdite
                             // Tabella con il profilo delle pressioni

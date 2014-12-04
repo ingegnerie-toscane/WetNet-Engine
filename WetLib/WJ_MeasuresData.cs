@@ -369,6 +369,9 @@ namespace WetLib
 
             try
             {
+                if (id_measure == 8024)
+                    System.Diagnostics.Debugger.Break();
+
                 DataTable dt = wet_db.ExecCustomQuery("SELECT MAX(`timestamp`) FROM data_measures WHERE `measures_id_measures` = " + id_measure.ToString());
                 if (dt.Rows.Count == 1)
                     ret = Convert.ToDateTime(dt.Rows[0][0]);
