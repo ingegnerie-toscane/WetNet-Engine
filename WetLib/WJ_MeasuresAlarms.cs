@@ -292,8 +292,8 @@ namespace WetLib
                                     // Valore assoluto
                                     double hyst_val = Math.Abs(hyst);
                                     // Calcolo l'isteresi sui dati
-                                    double diff = vals.Max() - vals.Min();
-                                    if (diff <= hyst_val)
+                                    double abs_diff = Math.Abs(vals.Max() - vals.Min());
+                                    if (abs_diff <= hyst_val)
                                     {
                                         if ((last_alarm.alarm_type != AlarmTypes.CONSTANT_INTERMEDIATE_VALUE) || (last_alarm.event_type != EventTypes.ALARM_ON))
                                         {
@@ -309,7 +309,7 @@ namespace WetLib
                                             // Compongo l'allarme
                                             alarm.alarm_type = AlarmTypes.CONSTANT_INTERMEDIATE_VALUE;
                                             alarm.event_type = EventTypes.ALARM_ON;
-                                            alarm.alarm_value = diff;
+                                            alarm.alarm_value = abs_diff;
                                             alarm.reference_value = hyst_val;
                                         }
                                         else

@@ -83,18 +83,21 @@ namespace WetLib
                     districts_energy_profile.Columns.Add("reliable", typeof(bool));
                     districts_energy_profile.Columns.Add("value", typeof(double));
                     districts_energy_profile.Columns.Add("districts_id_districts", typeof(int));
+                    districts_energy_profile.PrimaryKey = new DataColumn[] { districts_energy_profile.Columns["timestamp"] };
                     // Creo una tabella di interscambio per la portata
                     DataTable xchange = new DataTable();
                     xchange.Columns.Add("timestamp", typeof(DateTime));
                     xchange.Columns.Add("reliable", typeof(bool));
                     xchange.Columns.Add("plus", typeof(double));
                     xchange.Columns.Add("minus", typeof(double));
+                    xchange.PrimaryKey = new DataColumn[] { xchange.Columns["timestamp"] };
                     // Acquisisco l'ID univoco del distretto
                     int id_district = Convert.ToInt32(district["id_districts"]);
                     // Acquisisco la data di creazione del distretto
                     DateTime timestamp = Convert.ToDateTime(district["update_timestamp"]);
                     // Acquisisco tutte le misure configurate per il distretto, eccetto le pressioni
                     DataTable measures = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND measures.type = 0");
+                    measures.PrimaryKey = new DataColumn[] { measures.Columns["measures_id_measures"] };
                     // Acquisisco il timestamp dell'ultimo giorno campionato
                     DataTable tmp = wet_db.ExecCustomQuery("SELECT `timestamp` FROM data_districts WHERE `districts_id_districts` = " + id_district + " ORDER BY `timestamp` DESC LIMIT 1");
                     DateTime last;
@@ -149,10 +152,10 @@ namespace WetLib
                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
                         bool reliable = Convert.ToBoolean(dr["reliable"]);
                         double value = Convert.ToDouble(dr["value"]);
-                        DistrictsMeasuresSigns sign = (DistrictsMeasuresSigns)Convert.ToInt32(measures.Select("measures_id_measures = " + id_measure).First()["sign"]);
-                        // Se non esiste il record di bilancio, lo creo, altrimenti prendo l'esistente
-                        DataRow record;
-                        if (xchange.Select("timestamp = '#" + ts.ToString() + "#'").Length == 0)
+                        DistrictsMeasuresSigns sign = (DistrictsMeasuresSigns)Convert.ToInt32(measures.Rows.Find(id_measure)["sign"]);
+                        // Se non esiste il record di bilancio, lo creo, altrimenti prendo l'esistente                        
+                        DataRow record = xchange.Rows.Find(ts);
+                        if (record == null)
                         {
                             record = xchange.NewRow();
                             record["timestamp"] = ts;
@@ -161,7 +164,7 @@ namespace WetLib
                             record["minus"] = 0.0d;
                             xchange.Rows.Add(record);
                         }
-                        record = xchange.Select("timestamp = '#" + ts.ToString() + "#'").Single();
+                        record = xchange.Rows.Find(ts);
                         int record_index = xchange.Rows.IndexOf(record);
                         // Popolo il record corrente
                         xchange.Rows[record_index]["reliable"] = (Convert.ToBoolean(xchange.Rows[record_index]["reliable"]) ? reliable : false);
@@ -214,10 +217,10 @@ namespace WetLib
                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
                         bool reliable = Convert.ToBoolean(dr["reliable"]);
                         double value = Convert.ToDouble(dr["value"]);
-                        DistrictsMeasuresSigns sign = (DistrictsMeasuresSigns)Convert.ToInt32(measures.Select("measures_id_measures = " + id_measure).First()["sign"]);
+                        DistrictsMeasuresSigns sign = (DistrictsMeasuresSigns)Convert.ToInt32(measures.Rows.Find(id_measure)["sign"]);
                         // Se non esiste il record di bilancio, lo creo, altrimenti prendo l'esistente
-                        DataRow record;
-                        if (districts_energy_profile.Select("timestamp = '#" + ts.ToString() + "#'").Length == 0)
+                        DataRow record = districts_energy_profile.Rows.Find(ts);
+                        if (record == null)
                         {
                             record = districts_energy_profile.NewRow();
                             record["timestamp"] = ts;
@@ -226,7 +229,7 @@ namespace WetLib
                             record["districts_id_districts"] = id_district;
                             districts_energy_profile.Rows.Add(record);
                         }
-                        record = districts_energy_profile.Select("timestamp = '#" + ts.ToString() + "#'").Single();
+                        record = districts_energy_profile.Rows.Find(ts);
                         int record_index = districts_energy_profile.Rows.IndexOf(record);
                         // Popolo il record corrente e sommo i valori
                         if (sign == DistrictsMeasuresSigns.PLUS)

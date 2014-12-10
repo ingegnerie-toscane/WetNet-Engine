@@ -370,7 +370,7 @@ namespace WetLib
                             double min_night = double.NaN;
                             double real_leakage = double.NaN;
                             double nfcu = Convert.ToDouble(district["household_night_use"]) + Convert.ToDouble(district["not_household_night_use"]);
-                            DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM data_districts WHERE `districts_id_districts` = " + id_district.ToString() + " AND (`timestamp` >= '" + dt_min_night_start_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_min_night_stop_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "') ORDER BY `timestamp` ASC");
+                            DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM data_districts WHERE `districts_id_districts` = " + id_district.ToString() + " AND (`timestamp` >= '" + dt_min_night_start_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_min_night_stop_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "') ORDER BY `timestamp` ASC");                            
                             if (dt.Rows.Count > 0)
                                 min_night = WetStatistics.GetMean(WetUtility.GetDoubleValuesFromColumn(dt, "value"));
                             if (!double.IsNaN(min_night))
@@ -523,9 +523,10 @@ namespace WetLib
                                 DateTime ts = Convert.ToDateTime(dr["timestamp"]);
                                 double loss = ((double.IsNaN(real_leakage) ? 0.0d : real_leakage) / Math.Pow(p_min_night, alpha)) * (Math.Pow(Convert.ToDouble(dr["value"]), alpha));
                                 double val = 0.0d;
-                                DataRow[] drs = dt.Select("timestamp = '#" + ts.ToString() + "#'");
-                                if (drs.Length == 1)
-                                    val = Convert.ToDouble(drs[0]["value"]);
+                                dt.PrimaryKey = new DataColumn[] { dt.Columns["timestamp"] };
+                                DataRow drs = dt.Rows.Find(ts);
+                                if(drs != null)
+                                    val = Convert.ToDouble(drs["value"]);
                                 double theoretical = val - loss;
                                 loss_profile.Add(ts, loss);
                                 theoretical_trend.Add(ts, theoretical);

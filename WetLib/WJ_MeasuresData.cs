@@ -134,6 +134,7 @@ namespace WetLib
         {
             // Acquisisco le connessioni presenti nel database
             DataTable connections = wet_db.ExecCustomQuery("SELECT * FROM connections");
+            connections.PrimaryKey = new DataColumn[] { connections.Columns["id_odbcdsn"] };
             // Acquisisco le misure presenti nel database
             DataTable measures = wet_db.ExecCustomQuery("SELECT * FROM measures");
             // Ciclo per tutte le misure
@@ -149,7 +150,7 @@ namespace WetLib
                     // Popolo le coordinate database per la misura
                     MeasureDBCoord_Struct measure_coord;
                     int dsn_id = Convert.ToInt32(measure["connections_id_odbcdsn"]);
-                    measure_coord.odbc_connection = Convert.ToString(connections.Select("id_odbcdsn = " + dsn_id.ToString()).First()["odbc_dsn"]);
+                    measure_coord.odbc_connection = Convert.ToString(connections.Rows.Find(dsn_id)["odbc_dsn"]);
                     measure_coord.table_name = Convert.ToString(measure["table_name"]);
                     measure_coord.timestamp_column = Convert.ToString(measure["table_timestamp_column"]);
                     measure_coord.value_column = Convert.ToString(measure["table_value_column"]);
