@@ -538,10 +538,11 @@ namespace WetLib
                         else
                             last_change = Convert.ToDateTime(tmp_dt.Rows[0]["timestamp"]);
                         // Effettuo l'autoupdate delle bande se abilitato
-                        if ((bands_autoupdate) && (ev_last.type == EventTypes.POSSIBLE_GAIN) &&
-                            (ev_last.duration >= last_good_samples) &&
-                            (last_change < ev_last.day) &&
-                            (statistic_low_band != plb) && (statistic_high_band != phb))
+                        if (((bands_autoupdate) && (ev_last.type == EventTypes.POSSIBLE_GAIN) &&
+                             (ev_last.duration >= last_good_samples) &&
+                             (last_change < ev_last.day) &&
+                             (statistic_low_band != plb) && (statistic_high_band != phb)) ||
+                            ((ev_enable == true) && (low_band == 0.0d) && (high_band == 0.0d)))
                         {
                             // Aggiorno la tabella distretti
                             wet_db.ExecCustomCommand("UPDATE districts SET ev_high_band = " + phb.ToString().Replace(',', '.') +
@@ -823,10 +824,11 @@ namespace WetLib
                         else
                             last_change = Convert.ToDateTime(tmp_dt.Rows[0]["timestamp"]);
                         // Effettuo l'autoupdate delle bande se abilitato
-                        if ((bands_autoupdate) && (ev_last.type == EventTypes.POSSIBLE_GAIN) &&
-                            (ev_last.duration >= last_good_samples) &&
-                            (last_change < ev_last.day) &&
-                            (statistic_low_band != plb) && (statistic_high_band != phb))
+                        if (((bands_autoupdate) && (ev_last.type == EventTypes.POSSIBLE_GAIN) &&
+                             (ev_last.duration >= last_good_samples) &&
+                             (last_change < ev_last.day) &&
+                             (statistic_low_band != plb) && (statistic_high_band != phb)) ||
+                            ((ev_enable == true) && (low_band == 0.0d) && (high_band == 0.0d)))
                         {
                             // Aggiorno la tabella distretti
                             wet_db.ExecCustomCommand("UPDATE districts SET ev_high_band = " + phb.ToString().Replace(',', '.') +
