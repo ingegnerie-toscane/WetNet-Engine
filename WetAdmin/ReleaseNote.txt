@@ -1,0 +1,32 @@
+﻿WetAdmin - Release Notes
+========================
+
+v0.0.3.0 (alpha) # 2014-05-28 12:00
+-----------------------------------
+
+News:
+	None.
+
+Bugs fixed:
+	1) Error in DataGridView on column "sign" in measures of districts.
+
+v0.0.2.0 (alpha) # 2014-05-22 17:00
+-----------------------------------
+
+News:
+	1) Added automatic timestamp on measure record creation/modification.
+	2) Added automatic timestamp on district record creation/modification.
+	3) Changed districts alarm managegment, added n.4 time-programmable thresholds.
+
+Bugs fixed:
+	None.
+
+
+v0.0.1.0 (alpha) # 2014-05-07 15:01
+-----------------------------------
+
+News:
+	1) First version released.
+
+Bugs fixed:
+	None.
