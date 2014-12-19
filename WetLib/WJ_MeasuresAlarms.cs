@@ -376,12 +376,13 @@ namespace WetLib
         /// <param name="wet_db">Connessione al database WetNet</param>
         /// <param name="id_measure">ID della misura</param>
         /// <param name="id_odbcdsn">ID della connessione</param>
-        /// <returns>Ultimo allarme</returns>
-        public static AlarmStruct ReadLastAlarm(WetDBConn wet_db, int id_measure, int id_odbcdsn)
+        /// <param name="date">Data da analizzare</param>
+        /// <returns>Ultimo allarme del giorno specificato</returns>
+        public static AlarmStruct ReadLastAlarmDay(WetDBConn wet_db, int id_measure, int id_odbcdsn, DateTime date)
         {
             // Leggo l'ultimo allarme presente
             DataTable last_alarm_data = wet_db.ExecCustomQuery("SELECT * FROM measures_alarms WHERE `measures_id_measures` = " + id_measure.ToString() +
-                " ORDER BY `timestamp` DESC LIMIT 1");
+                " AND `timestamp` < '" + date.Date.AddDays(1.0d).ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' ORDER BY `timestamp` DESC LIMIT 1");
             AlarmStruct last_alarm;
             if (last_alarm_data.Rows.Count > 0)
             {
