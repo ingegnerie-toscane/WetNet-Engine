@@ -197,7 +197,7 @@ namespace WetLib
                     alarm.id_measure = id_measure;
                     alarm.id_odbcdsn = id_odbcdsn;
                     // Leggo l'ultimo allarme presente
-                    AlarmStruct last_alarm = ReadLastAlarm(wet_db, id_measure, id_odbcdsn);
+                    AlarmStruct last_alarm = ReadLastAlarmDay(wet_db, id_measure, id_odbcdsn, DateTime.Now);
                     if (check_time > 0)
                     {                        
                         // Prendo le ultime ore di funzionamento

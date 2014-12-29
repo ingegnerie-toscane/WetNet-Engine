@@ -265,7 +265,7 @@ namespace WetLib
         void DistrictsStatistic()
         {
             try
-            {
+            {                
                 // Acquisisco tutti i distretti configurati
                 DataTable districts = wet_db.ExecCustomQuery("SELECT * FROM districts");
                 // Ciclo per tutti i distretti
@@ -273,6 +273,9 @@ namespace WetLib
                 {
                     try
                     {
+                        // Controllo se è in corso il reset di un distretto
+                        if (wet_db.IsLocked("districts"))
+                            return;
                         // Acquisisco l'ID del distretto
                         int id_district = Convert.ToInt32(district["id_districts"]);
                         double alpha = Convert.ToDouble(district["alpha_emitter_exponent"]);

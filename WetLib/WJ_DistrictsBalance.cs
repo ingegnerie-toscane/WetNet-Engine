@@ -71,6 +71,13 @@ namespace WetLib
             {
                 try
                 {
+                    // Acquisisco l'ID univoco del distretto
+                    int id_district = Convert.ToInt32(district["id_districts"]);
+                    // Acquisisco la data di creazione del distretto
+                    DateTime timestamp = Convert.ToDateTime(district["update_timestamp"]);
+                    // Controllo la necessità di ricreare i dati del distretto
+                    if (Convert.ToInt32(district["reset_all_data"]) == id_district)
+                        ResetAllData(id_district, timestamp);
                     // Creo una tabella di bilancio di portata
                     DataTable balance = new DataTable();
                     balance.Columns.Add("timestamp", typeof(DateTime));
@@ -90,11 +97,7 @@ namespace WetLib
                     xchange.Columns.Add("reliable", typeof(bool));
                     xchange.Columns.Add("plus", typeof(double));
                     xchange.Columns.Add("minus", typeof(double));
-                    xchange.PrimaryKey = new DataColumn[] { xchange.Columns["timestamp"] };
-                    // Acquisisco l'ID univoco del distretto
-                    int id_district = Convert.ToInt32(district["id_districts"]);
-                    // Acquisisco la data di creazione del distretto
-                    DateTime timestamp = Convert.ToDateTime(district["update_timestamp"]);
+                    xchange.PrimaryKey = new DataColumn[] { xchange.Columns["timestamp"] };                                        
                     // Acquisisco tutte le misure configurate per il distretto, eccetto le pressioni
                     DataTable measures = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND measures.type = 0");
                     measures.PrimaryKey = new DataColumn[] { measures.Columns["measures_id_measures"] };
@@ -248,6 +251,58 @@ namespace WetLib
                 // Tempo di attesa fra le esecuzioni
                 Sleep(100);
             }                           
+        }
+
+        #endregion
+
+        #region Funzioni del modulo
+
+        /// <summary>
+        /// Resetta tutti i valori storici del distretto
+        /// </summary>
+        /// <param name="id_district">ID del distretto</param>
+        /// <param name="start_date">Data di inzio</param>
+        void ResetAllData(int id_district, DateTime start_date)
+        {
+            try
+            {
+                // Inserisco il blocco su tutte le tabelle da modificare
+                wet_db.ExecCustomCommand("LOCK TABLES districts WRITE, data_districts WRITE, districts_bands_history WRITE, " +
+                    "districts_energy_profile WRITE, districts_energy_day_statistic WRITE, districts_statistic_profiles WRITE, " +
+                    "districts_events WRITE, districts_day_statistic WRITE");
+                // Elimino i profili di consumo
+                wet_db.ExecCustomCommand("DELETE FROM data_districts WHERE districts_id_districts = " + id_district + " AND `timestamp` >= '" +
+                    start_date.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                // Elimino lo storico delle bande
+                wet_db.ExecCustomCommand("DELETE FROM districts_bands_history WHERE districts_id_districts = " + id_district + " AND `timestamp` >= '" +
+                    start_date.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                // Elimino i profili energetici
+                wet_db.ExecCustomCommand("DELETE FROM districts_energy_profile WHERE districts_id_districts = " + id_district + " AND `timestamp` >= '" +
+                    start_date.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                // Elimino le statistiche energetiche
+                wet_db.ExecCustomCommand("DELETE FROM districts_energy_day_statistic WHERE districts_id_districts = " + id_district + " AND `day` >= '" +
+                    start_date.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                // Elimino i profili statistici
+                wet_db.ExecCustomCommand("DELETE FROM districts_statistic_profiles WHERE districts_id_districts = " + id_district + " AND `timestamp` >= '" +
+                    start_date.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                // Elimino gli eventi
+                wet_db.ExecCustomCommand("DELETE FROM districts_events WHERE districts_id_districts = " + id_district + " AND `day` >= '" +
+                    start_date.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                // Elimino le statistiche
+                wet_db.ExecCustomCommand("DELETE FROM districts_day_statistic WHERE districts_id_districts = " + id_district + " AND `day` >= '" +
+                    start_date.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                // Tolgo il blocco
+                wet_db.ExecCustomCommand("UNLOCK TABLES");
+            }
+            catch (Exception ex)
+            {
+                WetDebug.GestException(ex);
+            }
+            finally
+            {
+                // Aggiorno il campo di reset
+                wet_db.ExecCustomCommand("UPDATE districts SET `reset_all_data` = 0 WHERE id_districts = " + id_district);
+            }
         }
 
         #endregion

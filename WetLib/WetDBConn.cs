@@ -358,6 +358,20 @@ namespace WetLib
         #region Informative
 
         /// <summary>
+        /// Indica se la tabella specificata è bloccata
+        /// </summary>
+        /// <param name="table_name">Nome della tabella</param>
+        /// <returns>Stato del blocco</returns>
+        public bool IsLocked(string table_name)
+        {
+            DataTable dt = ExecCustomQuery("SHOW OPEN TABLES WHERE `Table` = '" + table_name + "' AND `In_use` > 0");
+            if (dt.Rows.Count > 0)
+                return true;
+            else
+                return false;
+        }
+
+        /// <summary>
         /// Restituisce una coppia di valori (nome tabella - chiave primaria) da una foreign key della tabella collegata
         /// </summary>
         /// <param name="table_name">Nome della tabella</param>
