@@ -200,7 +200,7 @@ namespace WetLib
                 {
                     // Controllo se è in corso il reset di un distretto
                     if (wet_db.IsLocked("districts"))
-                        return;
+                        return;                    
                     // Acquisisco l'ID del distretto
                     int id_district = Convert.ToInt32(district["id_districts"]);
                     // Acquisisco data e ora di creazione del distretto
@@ -229,6 +229,7 @@ namespace WetLib
                     int samples_trigger = Convert.ToInt32(district["ev_samples_trigger"]);
                     // Acquisisco l'ultimo evento registrato
                     Event last_registered_event = ReadLastEvent(id_district);
+                    string measure_name = "min_night";
                     // Ciclo per tutti i giorni arretrati
                     int days = 0;
                     if (last_registered_event.day == DateTime.MinValue.Date)
@@ -255,11 +256,45 @@ namespace WetLib
                     {
                         // Imposto il giorno in analisi
                         DateTime actual = DateTime.Now.Subtract(new TimeSpan(days, 0, 0, 0)).Date;
-
+                        
                         #region Gestione distretto fuori controllo
 
-                        if (days > 0)
+                        // Acquisisco il record statistico per il giorno corrente
+                        bool no_valid_daily_statistic_record = false;
+                        DataTable tmp_dt = wet_db.ExecCustomQuery("SELECT * FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district + " AND `day` = '" + actual.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                        if (tmp_dt.Rows.Count == 0)
+                            no_valid_daily_statistic_record = true;
+                        else
                         {
+                            if (measure_type != DistrictStatisticMeasureType.STATISTICAL_PROFILE)
+                            {
+                                // Imposto il nome della variabile da acquisire                                
+                                switch (measure_type)
+                                {
+                                    default:
+                                    case DistrictStatisticMeasureType.MIN_NIGHT:
+                                        measure_name = "min_night";
+                                        break;
+
+                                    case DistrictStatisticMeasureType.MIN_DAY:
+                                        measure_name = "min_day";
+                                        break;
+
+                                    case DistrictStatisticMeasureType.MAX_DAY:
+                                        measure_name = "max_day";
+                                        break;
+
+                                    case DistrictStatisticMeasureType.AVG_DAY:
+                                        measure_name = "avg_day";
+                                        break;
+                                }
+                                if ((tmp_dt.Rows[0][measure_name] == DBNull.Value) || (tmp_dt.Rows[0]["avg_day"] == DBNull.Value))
+                                    no_valid_daily_statistic_record = true;
+                            }
+                        }
+
+                        if (days > 0)                        
+                        {                            
                             // Creo un vettore delle misure in allarme
                             List<WJ_MeasuresAlarms.AlarmStruct> alarms = new List<WJ_MeasuresAlarms.AlarmStruct>();
                             // Controllo se ci sono allarmi sulle misure
@@ -282,7 +317,7 @@ namespace WetLib
                             }
 
                             // Se c'è almeno un allarme lo gestisco e creo l'evento
-                            if (alarms.Count > 0)
+                            if ((alarms.Count > 0) || (no_valid_daily_statistic_record))
                             {
                                 // Inizializzo la struttura di un evento
                                 Event ev;
@@ -303,12 +338,17 @@ namespace WetLib
                                     if (lasts[lasts.Length - 1].type == EventTypes.OUT_OF_CONTROL)
                                         ev.duration = ++lasts[lasts.Length - 1].duration;
                                 }
-                                // Ciclo per tutti gli allarmi
-                                for (int ii = 0; ii < alarms.Count; ii++)
+                                if (no_valid_daily_statistic_record)
+                                    ev.description = "District out of control - No valid daily statistic record!";
+                                else
                                 {
-                                    ev.description += alarms[ii].id_measure;
-                                    if (ii < (alarms.Count - 1))
-                                        ev.description += ", ";
+                                    // Ciclo per tutti gli allarmi
+                                    for (int ii = 0; ii < alarms.Count; ii++)
+                                    {
+                                        ev.description += alarms[ii].id_measure;
+                                        if (ii < (alarms.Count - 1))
+                                            ev.description += ", ";
+                                    }
                                 }
                                 // Controllo che non sia già presente un evento uguale per il giorno corrente
                                 Event[] actual_day_events;
@@ -345,9 +385,8 @@ namespace WetLib
                             if (cfg.interpolation_time <= 0)
                                 throw new Exception("Interpolation time must be > 0!");
 
-                            // Controllo se ho almeno un record statistico per il giorno precedente
-                            DataTable tmp_dt = wet_db.ExecCustomQuery("SELECT `day` FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district + " AND `day` = '" + actual.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
-                            if (tmp_dt.Rows.Count == 0)
+                            // Controllo se ho almeno un record statistico per il giorno precedente                            
+                            if (no_valid_daily_statistic_record)
                             {
                                 days--;
                                 continue;
@@ -372,6 +411,8 @@ namespace WetLib
                                     // Acquisisco la media giornaliera statistica
                                     avg_vect = GetDayAvgVector(id_district, actual, last_good_samples);
                                     double avg_sample = avg_vect[tmp_dt.Rows.IndexOf(dr)];
+                                    if (avg_sample == 0.0d)
+                                        avg_sample = 1.0d;
                                     // Acquisisco gli ultimi eventi in base al trigger
                                     Event[] lasts;
                                     ReadLastPastEvents(id_district, actual, samples_trigger, out lasts);
@@ -418,17 +459,9 @@ namespace WetLib
                                                 for (int ii = 0; ii < lasts.Length; ii++)
                                                 {
                                                     if (lasts[ii].type == EventTypes.ANOMAL_INCREASE)
-                                                    {
-                                                        if (ii > 0)
-                                                        {
-                                                            if (lasts[ii - 1].type == EventTypes.ANOMAL_INCREASE)
-                                                                trigger++;  // Gli eventi devono essere consecutivi...
-                                                            else
-                                                                break;  // ...altrimenti esco!
-                                                        }
-                                                        else
-                                                            trigger++;  // Sono al primo evento ed incremento il trigger
-                                                    }
+                                                        trigger++;
+                                                    else
+                                                        trigger = 0;
                                                 }
                                                 // Se il trigger viene raggiunto imposto un evento perdita
                                                 if (trigger == samples_trigger)
@@ -613,35 +646,7 @@ namespace WetLib
                         {
                             #region Variabili statistiche
 
-                            // Imposto il nome della variabile da acquisire
-                            string measure_name;
-                            switch (measure_type)
-                            {
-                                default:
-                                case DistrictStatisticMeasureType.MIN_NIGHT:
-                                    measure_name = "min_night";
-                                    break;
-
-                                case DistrictStatisticMeasureType.MIN_DAY:
-                                    measure_name = "min_day";
-                                    break;
-
-                                case DistrictStatisticMeasureType.MAX_DAY:
-                                    measure_name = "max_day";
-                                    break;
-
-                                case DistrictStatisticMeasureType.AVG_DAY:
-                                    measure_name = "avg_day";
-                                    break;
-                            }
-                            // Controllo che siano stati scritti i valori statistici per il giorno precedente, altrimenti proseguo
-                            DataTable tmp_dt = wet_db.ExecCustomQuery("SELECT * FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district + " AND `day` = '" + actual.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
-                            if (tmp_dt.Rows.Count == 0)
-                            {
-                                days--;
-                                continue;   // Il record non è ancora stato scritto
-                            }
-                            if ((tmp_dt.Rows[0][measure_name] == DBNull.Value) || (tmp_dt.Rows[0]["avg_day"] == DBNull.Value))
+                            if (no_valid_daily_statistic_record)
                             {
                                 days--;
                                 continue;   // Il campo non è ancora stato scritto
@@ -657,6 +662,8 @@ namespace WetLib
                                 double val = Convert.ToDouble(tmp_dt.Rows[0][measure_name]);
                                 // Acquisisco la media giornaliera statistica
                                 double avg_day = Convert.ToDouble(tmp_dt.Rows[0]["avg_day"]);
+                                if (avg_day == 0.0d)
+                                    avg_day = 1.0d;
                                 // Acquisisco gli ultimi eventi in base al trigger
                                 Event[] lasts;
                                 ReadLastPastEvents(id_district, actual, samples_trigger, out lasts);
@@ -703,17 +710,9 @@ namespace WetLib
                                             for (int ii = 0; ii < lasts.Length; ii++)
                                             {
                                                 if (lasts[ii].type == EventTypes.ANOMAL_INCREASE)
-                                                {
-                                                    if (ii > 0)
-                                                    {
-                                                        if (lasts[ii - 1].type == EventTypes.ANOMAL_INCREASE)
-                                                            trigger++;  // Gli eventi devono essere consecutivi...
-                                                        else
-                                                            break;  // ...altrimenti esco!
-                                                    }
-                                                    else
-                                                        trigger++;  // Sono al primo evento ed incremento il trigger
-                                                }
+                                                    trigger++;
+                                                else
+                                                    trigger = 0;
                                             }
                                             // Se il trigger viene raggiunto imposto un evento perdita
                                             if (trigger == (samples_trigger - 1))
@@ -766,17 +765,9 @@ namespace WetLib
                                             for (int ii = 0; ii < lasts.Length; ii++)
                                             {
                                                 if (lasts[ii].type == EventTypes.ANOMAL_DECREASE)
-                                                {
-                                                    if (ii > 0)
-                                                    {
-                                                        if (lasts[ii - 1].type == EventTypes.ANOMAL_DECREASE)
-                                                            trigger++;  // Gli eventi devono essere consecutivi...
-                                                        else
-                                                            break;  // ...altrimenti esco!
-                                                    }
-                                                    else
-                                                        trigger++;  // Sono al primo evento ed incremento il trigger
-                                                }
+                                                    trigger++;
+                                                else
+                                                    trigger = 0;
                                             }
                                             // Se il trigger viene raggiunto imposto un evento perdita
                                             if (trigger == (samples_trigger - 1))
@@ -1075,7 +1066,7 @@ namespace WetLib
         /// <param name="ev">Evento</param>
         void ReportEvent(Event ev)
         {
-            if (ev.type != EventTypes.NO_EVENT)
+            if ((ev.type != EventTypes.NO_EVENT) && (ev.day.Date == DateTime.Now.Subtract(new TimeSpan(1, 0, 0, 0)).Date))
             {
                 // Acquisisco il nome per il distretto
                 DataTable dt = wet_db.ExecCustomQuery("SELECT `name` FROM districts WHERE id_districts = " + ev.id_district);
