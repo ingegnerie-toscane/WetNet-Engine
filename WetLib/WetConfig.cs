@@ -400,6 +400,17 @@ namespace WetLib
         }
 
         /// <summary>
+        /// Restituisce la variabile con i tempi di interpolazione espressi in minuti
+        /// </summary>
+        /// <returns>Tempo di interpolazione espresso in minuti</returns>
+        public static int GetInterpolationTimeMinutes()
+        {
+            XElement root = XElement.Load(CONFIG_FILE_NAME);
+
+            return Convert.ToInt32(root.Element("InterpolationTimeMinutes").Value);
+        }
+
+        /// <summary>
         /// Restituisce la struttura con la configurazione per il job di copia degli LCF
         /// </summary>
         /// <returns>Struttura con la configurazione</returns>

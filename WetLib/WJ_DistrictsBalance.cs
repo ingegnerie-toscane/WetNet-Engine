@@ -19,11 +19,6 @@ namespace WetLib
         /// </summary>
         const string JOB_NAME = "WJ_DistrictsBalance";
 
-        /// <summary>
-        /// Tempo di attesa fra una esecuzione e la successiva = 6 minuti
-        /// </summary>
-        const int JOB_SLEEP_TIME_MS = 360000;
-
         #endregion
 
         #region Istanze
@@ -41,8 +36,10 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         public WJ_DistrictsBalance()
-            : base(JOB_NAME, JOB_SLEEP_TIME_MS)
+            : base(JOB_NAME)
         {
+            // Millisecondi di attesa fra le esecuzioni
+            job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
         }
 
         #endregion
@@ -123,7 +120,7 @@ namespace WetLib
                             " AND `timestamp` > '" + start.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' ORDER BY `timestamp` DESC LIMIT 1");
                         if (tmp.Rows.Count == 1)
                             lasts.Add(Convert.ToDateTime(tmp.Rows[0][0]));
-                        Sleep(100);
+                        Sleep();
                     }
                     if (lasts.Count == measures.Rows.Count)
                     {
@@ -249,7 +246,7 @@ namespace WetLib
                     WetDebug.GestException(ex);
                 }
                 // Tempo di attesa fra le esecuzioni
-                Sleep(100);
+                Sleep();
             }                           
         }
 

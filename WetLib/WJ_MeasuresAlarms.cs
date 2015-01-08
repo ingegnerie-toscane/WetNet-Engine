@@ -19,11 +19,6 @@ namespace WetLib
         /// </summary>
         const string JOB_NAME = "WJ_MeasuresAlarms";
 
-        /// <summary>
-        /// Tempo di attesa fra una esecuzione e la successiva = 6 minuti
-        /// </summary>
-        const int JOB_SLEEP_TIME_MS = 360000;
-
         #endregion
 
         #region Enumerazioni
@@ -147,8 +142,10 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         public WJ_MeasuresAlarms()
-            : base(JOB_NAME, JOB_SLEEP_TIME_MS)
+            : base(JOB_NAME)
         {
+            // Millisecondi di attesa fra le esecuzioni
+            job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
         }
 
         #endregion
@@ -337,7 +334,7 @@ namespace WetLib
                         InsertAlarm(alarm);
                     }
                     // Metto in pausa il job
-                    Sleep(100);
+                    Sleep();
                 }
             }
             catch (Exception ex)

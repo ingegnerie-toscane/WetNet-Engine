@@ -20,11 +20,6 @@ namespace WetLib
         const string JOB_NAME = "WJ_Statistics";
 
         /// <summary>
-        /// Tempo di attesa fra una esecuzione e la successiva = 6 minuti
-        /// </summary>
-        const int JOB_SLEEP_TIME_MS = 360000;
-
-        /// <summary>
         /// Ora in cui eseguire il controllo dei valori statistici del giorno precedente
         /// </summary>
         public const int CHECK_HOUR = 3;
@@ -55,8 +50,10 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         public WJ_Statistics()
-            : base(JOB_NAME, JOB_SLEEP_TIME_MS)
+            : base(JOB_NAME)
         {
+            // Millisecondi di attesa fra le esecuzioni
+            job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
         }
 
         #endregion      
@@ -243,9 +240,9 @@ namespace WetLib
                                 if (count != 1)
                                     throw new Exception("Unattempted error while updating measure statistic record!");
                             }
-                            Sleep(100);
+                            Sleep();
                         }
-                        Sleep(100);
+                        Sleep();
                     }
                     catch (Exception ex0)
                     {
@@ -308,7 +305,7 @@ namespace WetLib
                                 can_continue = false;
                                 break;
                             }
-                            Sleep(100);
+                            Sleep();
                         }
                         if (!can_continue)
                             continue;
@@ -580,9 +577,9 @@ namespace WetLib
                                 if (upd_cnt != 1)
                                     throw new Exception("Unattempted error while updating district energy statistic record!");
                             }
-                            Sleep(100);
+                            Sleep();
                         }
-                        Sleep(100);
+                        Sleep();
                     }
                     catch (Exception ex0)
                     {

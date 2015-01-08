@@ -19,11 +19,6 @@ namespace WetLib
         /// </summary>
         const string JOB_NAME = "WJ_LCFCopy";
 
-        /// <summary>
-        /// Tempo di attesa fra una esecuzione e la successiva = 6 minuti
-        /// </summary>
-        const int JOB_SLEEP_TIME_MS = 360000; 
-
         #endregion
 
         #region Istanze
@@ -65,8 +60,10 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         public WJ_LCFCopy()
-            : base(JOB_NAME, JOB_SLEEP_TIME_MS)
+            : base(JOB_NAME)
         {
+            // Millisecondi di attesa fra le esecuzioni
+            job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
             // Istanzio la configurazione
             cfg = new WetConfig();
             // Carico i parametri della configurazione
@@ -155,7 +152,7 @@ namespace WetLib
                 {
                     WetDebug.GestException(ex);
                 }
-                Sleep(100);
+                Sleep();
             }
         }
 

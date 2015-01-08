@@ -22,12 +22,7 @@ namespace WetLib
         /// <summary>
         /// Numero massimo di record in una query
         /// </summary>
-        const uint MAX_RECORDS_IN_QUERY = 65536;
-
-        /// <summary>
-        /// Tempo di attesa fra una esecuzione e la successiva = 6 minuti
-        /// </summary>
-        const int JOB_SLEEP_TIME_MS = 360000; 
+        const uint MAX_RECORDS_IN_QUERY = 65536; 
 
         #endregion
 
@@ -105,8 +100,10 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         public WJ_MeasuresData()
-            : base(JOB_NAME, JOB_SLEEP_TIME_MS)
+            : base(JOB_NAME)
         {
+            // Millisecondi di attesa fra le esecuzioni
+            job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
             // Carico la configurazione
             WetConfig cfg = new WetConfig();
             config = cfg.GetWJ_MeasuresData_Config();
@@ -276,7 +273,7 @@ namespace WetLib
                 {
                     WetDebug.GestException(ex);
                 }
-                Sleep(100);
+                Sleep();
             }
         }
 

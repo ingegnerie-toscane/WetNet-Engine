@@ -118,11 +118,6 @@ namespace WetLib
         const string JOB_NAME = "WJ_Statistics";
 
         /// <summary>
-        /// Tempo di attesa fra una esecuzione e la successiva = 6 minuti
-        /// </summary>
-        const int JOB_SLEEP_TIME_MS = 360000;
-
-        /// <summary>
         /// Ora minima per l'analisi degli eventi
         /// </summary>
         const int CHECK_HOUR = WJ_Statistics.CHECK_HOUR + 1;
@@ -164,8 +159,10 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         public WJ_Events()
-            : base(JOB_NAME, JOB_SLEEP_TIME_MS)
-        {            
+            : base(JOB_NAME)
+        {
+            // Millisecondi di attesa fra le esecuzioni
+            job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
         }
 
         #endregion
@@ -313,7 +310,7 @@ namespace WetLib
                                         alarms.Add(alarm);
                                 }
                                 // Passo il controllo al S.O. per l'attesa
-                                Sleep(100);
+                                Sleep();
                             }
 
                             // Se c'è almeno un allarme lo gestisco e creo l'evento
@@ -324,7 +321,7 @@ namespace WetLib
                                 ev.day = actual;
                                 ev.type = EventTypes.OUT_OF_CONTROL;
                                 ev.measure_type = DistrictStatisticMeasureType.STATISTICAL_PROFILE;
-                                ev.duration = 0;
+                                ev.duration = 1;
                                 ev.description = "District out of control - Allarm(s) on measure(s): ";
                                 ev.id_district = id_district;
                                 ev.value = 0.0d;
@@ -576,7 +573,7 @@ namespace WetLib
                                             ReportEvent(ev);
                                         }
                                     }
-                                    Sleep(100);
+                                    Sleep();
                                 }
                             }
 
@@ -898,10 +895,10 @@ namespace WetLib
                         // Decremento di un giorno
                         days--;
                         // Passo il controllo al S.O.
-                        Sleep(100);
+                        Sleep();
                     }
                     // Passo il controllo al S.O.
-                    Sleep(100);
+                    Sleep();
                 }
             }
             catch (Exception ex)

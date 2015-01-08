@@ -18,12 +18,12 @@ namespace WetLib
         /// <summary>
         /// Tempo di default per l'attesa fra l'esecuzione di un job e la successiva (millisecondi)
         /// </summary>
-        const int DEFAULT_JOB_SLEEP_TIME = 1;
+        public const int DEFAULT_JOB_SLEEP_TIME = 1;
 
         /// <summary>
         /// Timeout di attesa di default per l'arresto del thread in millisecondi
         /// </summary>
-        const int DEFAULT_JOB_STOP_TIMEOUT = 6000;
+        public const int DEFAULT_JOB_STOP_TIMEOUT = 6000;
 
         #endregion
 
@@ -51,12 +51,12 @@ namespace WetLib
         /// <summary>
         /// Tempo di attesa fra una esecuzione e la successiva del job (millisecondi)
         /// </summary>
-        readonly int job_sleep_time;
+        protected int job_sleep_time;
 
         /// <summary>
         /// Timeout di attesa per l'arresto del job
         /// </summary>
-        readonly int job_stop_timeout;
+        protected int job_stop_timeout;
 
         /// <summary>
         /// Variabile semaforo per la condizione di run
@@ -64,7 +64,7 @@ namespace WetLib
         protected volatile bool run;        
 
         #endregion
-
+        
         #region Costruttore
 
         /// <summary>
@@ -194,6 +194,14 @@ namespace WetLib
         protected void Sleep(int milliseconds)
         {
             Thread.Sleep(milliseconds);
+        }
+
+        /// <summary>
+        /// Passa istantaneamente il controllo al s.o.
+        /// </summary>
+        protected void Sleep()
+        {
+            Thread.Sleep(1);
         }
 
         #endregion

@@ -26,18 +26,15 @@ namespace WetLib
                 Debug.Print(ex.StackTrace.ToString());
                 //Debugger.Break();
             }
-            else
-            {
-                // Stampo nel log eventi
-                string log_name = Assembly.GetEntryAssembly().GetName().Name;
-                if (!EventLog.SourceExists(log_name))
-                    EventLog.CreateEventSource(log_name, log_name);
-                string message =
-                    "SOURCE      : " + ex.Source + Environment.NewLine +
-                    "MESSAGE     : " + ex.Message + Environment.NewLine +
-                    "STACK TRACE : " + Environment.NewLine + ex.StackTrace;
-                EventLog.WriteEntry(log_name, message, EventLogEntryType.Error);
-            }
+            // Stampo nel log eventi
+            string log_name = Assembly.GetEntryAssembly().GetName().Name;
+            if (!EventLog.SourceExists(log_name))
+                EventLog.CreateEventSource(log_name, log_name);
+            string message =
+                "SOURCE      : " + ex.Source + Environment.NewLine +
+                "MESSAGE     : " + ex.Message + Environment.NewLine +
+                "STACK TRACE : " + Environment.NewLine + ex.StackTrace;
+            EventLog.WriteEntry(log_name, message, EventLogEntryType.Error);
         }
 
         #endregion
