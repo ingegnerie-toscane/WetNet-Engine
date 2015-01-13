@@ -7,48 +7,20 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WetLib", "WetLib\WetLib.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WetSvc", "WetSvc\WetSvc.csproj", "{47CCDE29-EB11-4793-BA85-0D7C4D5C1BED}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WetAdmin", "WetAdmin\WetAdmin.csproj", "{4DA39556-E844-417F-A348-35ECE6D1158E}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
-		Debug|Mixed Platforms = Debug|Mixed Platforms
-		Debug|x86 = Debug|x86
 		Release|Any CPU = Release|Any CPU
-		Release|Mixed Platforms = Release|Mixed Platforms
-		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{A2FBDB6B-4EE1-40EC-ADCB-982EA41306F8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A2FBDB6B-4EE1-40EC-ADCB-982EA41306F8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A2FBDB6B-4EE1-40EC-ADCB-982EA41306F8}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{A2FBDB6B-4EE1-40EC-ADCB-982EA41306F8}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{A2FBDB6B-4EE1-40EC-ADCB-982EA41306F8}.Debug|x86.ActiveCfg = Debug|Any CPU
 		{A2FBDB6B-4EE1-40EC-ADCB-982EA41306F8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A2FBDB6B-4EE1-40EC-ADCB-982EA41306F8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A2FBDB6B-4EE1-40EC-ADCB-982EA41306F8}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{A2FBDB6B-4EE1-40EC-ADCB-982EA41306F8}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{A2FBDB6B-4EE1-40EC-ADCB-982EA41306F8}.Release|x86.ActiveCfg = Release|Any CPU
 		{47CCDE29-EB11-4793-BA85-0D7C4D5C1BED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{47CCDE29-EB11-4793-BA85-0D7C4D5C1BED}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{47CCDE29-EB11-4793-BA85-0D7C4D5C1BED}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{47CCDE29-EB11-4793-BA85-0D7C4D5C1BED}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{47CCDE29-EB11-4793-BA85-0D7C4D5C1BED}.Debug|x86.ActiveCfg = Debug|Any CPU
 		{47CCDE29-EB11-4793-BA85-0D7C4D5C1BED}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{47CCDE29-EB11-4793-BA85-0D7C4D5C1BED}.Release|Any CPU.Build.0 = Release|Any CPU
-		{47CCDE29-EB11-4793-BA85-0D7C4D5C1BED}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{47CCDE29-EB11-4793-BA85-0D7C4D5C1BED}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{47CCDE29-EB11-4793-BA85-0D7C4D5C1BED}.Release|x86.ActiveCfg = Release|Any CPU
-		{4DA39556-E844-417F-A348-35ECE6D1158E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4DA39556-E844-417F-A348-35ECE6D1158E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4DA39556-E844-417F-A348-35ECE6D1158E}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{4DA39556-E844-417F-A348-35ECE6D1158E}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{4DA39556-E844-417F-A348-35ECE6D1158E}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{4DA39556-E844-417F-A348-35ECE6D1158E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4DA39556-E844-417F-A348-35ECE6D1158E}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4DA39556-E844-417F-A348-35ECE6D1158E}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{4DA39556-E844-417F-A348-35ECE6D1158E}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{4DA39556-E844-417F-A348-35ECE6D1158E}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
