@@ -314,7 +314,7 @@ namespace WetLib
                             }
 
                             // Se c'è almeno un allarme lo gestisco e creo l'evento
-                            if ((alarms.Count > 0) || (no_valid_daily_statistic_record))
+                            if ((alarms.Count > 0) || ((no_valid_daily_statistic_record) && (days > 1)))
                             {
                                 // Inizializzo la struttura di un evento
                                 Event ev;
@@ -335,7 +335,7 @@ namespace WetLib
                                     if (lasts[lasts.Length - 1].type == EventTypes.OUT_OF_CONTROL)
                                         ev.duration = ++lasts[lasts.Length - 1].duration;
                                 }
-                                if (no_valid_daily_statistic_record)
+                                if ((no_valid_daily_statistic_record) && (days > 1))
                                     ev.description = "District out of control - No valid daily statistic record!";
                                 else
                                 {
