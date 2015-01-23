@@ -73,7 +73,8 @@ namespace WetLib
                     // Acquisisco la data di creazione del distretto
                     DateTime timestamp = Convert.ToDateTime(district["update_timestamp"]);
                     // Controllo la necessità di ricreare i dati del distretto
-                    if (Convert.ToInt32(district["reset_all_data"]) == id_district)
+                    int reset_all_data = Convert.ToInt32(district["reset_all_data"]);
+                    if (reset_all_data == id_district)
                         ResetAllData(id_district, timestamp);
                     // Creo una tabella di bilancio di portata
                     DataTable balance = new DataTable();
@@ -240,6 +241,12 @@ namespace WetLib
                     }
                     // Inserisco il bilancio
                     wet_db.TableInsert(districts_energy_profile, "districts_energy_profile");
+                    // Aggiorno il contatore
+                    if (reset_all_data == (id_district + 1))
+                    {
+                        // Aggiorno il campo di reset
+                        wet_db.ExecCustomCommand("UPDATE districts SET `reset_all_data` = " + (id_district + 2).ToString() + " WHERE id_districts = " + id_district.ToString());
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -298,7 +305,7 @@ namespace WetLib
             finally
             {
                 // Aggiorno il campo di reset
-                wet_db.ExecCustomCommand("UPDATE districts SET `reset_all_data` = 0 WHERE id_districts = " + id_district);
+                wet_db.ExecCustomCommand("UPDATE districts SET `reset_all_data` = " + (id_district + 1).ToString() + " WHERE id_districts = " + id_district.ToString());
             }
         }
 

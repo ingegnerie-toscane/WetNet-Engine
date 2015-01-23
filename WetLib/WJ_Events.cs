@@ -200,6 +200,10 @@ namespace WetLib
                         return;                    
                     // Acquisisco l'ID del distretto
                     int id_district = Convert.ToInt32(district["id_districts"]);
+                    // Acquisisco lo stato di reset
+                    int reset_all_data = Convert.ToInt32(district["reset_all_data"]);
+                    if (reset_all_data != 0)
+                        continue;
                     // Acquisisco data e ora di creazione del distretto
                     DateTime update_timestamp = Convert.ToDateTime(district["update_timestamp"]);
                     // Acquisisco l'abilitazione agli eventi

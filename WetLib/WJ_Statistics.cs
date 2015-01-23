@@ -278,6 +278,8 @@ namespace WetLib
                         double alpha = Convert.ToDouble(district["alpha_emitter_exponent"]);
                         double household_night_use = Convert.ToDouble(district["household_night_use"]);
                         double not_household_night_use = Convert.ToDouble(district["not_household_night_use"]);
+                        // Controllo il campo di reset
+                        int reset_all_data = Convert.ToInt32(district["reset_all_data"]);
                         // Leggo l'ultimo giorno scritto sulle statistiche
                         DateTime first_day = DateTime.MinValue;
                         DataTable first_day_table = wet_db.ExecCustomQuery("SELECT * FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `day` DESC LIMIT 1");
@@ -505,7 +507,7 @@ namespace WetLib
                                 // Imposto la media delle medie
                                 p_min_night = aznp;
                             }
-                            if (p_min_night == 0.0d)
+                            if ((p_min_night == 0.0d) || double.IsNaN(p_min_night))
                                 p_min_night = 1.0d;
                             // Calcolo l'mnf della pressione
                             if (!double.IsNaN(min_night))
@@ -532,15 +534,18 @@ namespace WetLib
                                 theoretical_trend.Add(ts, theoretical);
                             }
                             // Compongo la stringa di inserimento
-                            string ins_str = "INSERT IGNORE INTO districts_statistic_profiles VALUES ";
-                            for (int jj = 0; jj < loss_profile.Count; jj++)
+                            if (loss_profile.Count > 0)
                             {
-                                ins_str += "('" + loss_profile.ElementAt(jj).Key.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', " +
-                                    loss_profile.ElementAt(jj).Value.ToString().Replace(',', '.') + ", " +
-                                    theoretical_trend.ElementAt(jj).Value.ToString().Replace(',', '.') + ", " + id_district.ToString() + "),";
+                                string ins_str = "INSERT IGNORE INTO districts_statistic_profiles VALUES ";
+                                for (int jj = 0; jj < loss_profile.Count; jj++)
+                                {
+                                    ins_str += "('" + loss_profile.ElementAt(jj).Key.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', " +
+                                        loss_profile.ElementAt(jj).Value.ToString().Replace(',', '.') + ", " +
+                                        theoretical_trend.ElementAt(jj).Value.ToString().Replace(',', '.') + ", " + id_district.ToString() + "),";
+                                }
+                                ins_str = ins_str.Remove(ins_str.Length - 1, 1);
+                                wet_db.ExecCustomCommand(ins_str);
                             }
-                            ins_str = ins_str.Remove(ins_str.Length - 1, 1);
-                            wet_db.ExecCustomCommand(ins_str);
 
                             /********************************/
                             /*** Statistiche sull'energia ***/
@@ -578,6 +583,12 @@ namespace WetLib
                                     throw new Exception("Unattempted error while updating district energy statistic record!");
                             }
                             Sleep();
+                        }
+                        // Controllo se devo aggiornare il campo di reset
+                        if (reset_all_data == (id_district + 2))
+                        {
+                            // Aggiorno il campo di reset
+                            wet_db.ExecCustomCommand("UPDATE districts SET `reset_all_data` = 0 WHERE id_districts = " + id_district.ToString());
                         }
                         Sleep();
                     }
