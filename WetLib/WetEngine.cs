@@ -60,7 +60,6 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         public WetEngine()
-            : base(ENGINE_NAME)
         {
             // Istanziamento dei jobs
             wj_lcf_copy = new WJ_LCFCopy();

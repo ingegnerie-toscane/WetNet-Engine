@@ -159,7 +159,6 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         public WJ_Events()
-            : base(JOB_NAME)
         {
             // Millisecondi di attesa fra le esecuzioni
             job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
@@ -305,6 +304,10 @@ namespace WetLib
                                 // Acquisisco l'ID della misura
                                 int id_measure = Convert.ToInt32(measure["measures_id_measures"]);
                                 int id_odbcdsn = Convert.ToInt32(measure["measures_connections_id_odbcdsn"]);
+                                // Non gestisco le misure di pressione per l'allarme OUT_OF_CONTROL
+                                MeasureTypes m_type = (MeasureTypes)Convert.ToInt32(measure["type"]);
+                                if (m_type == MeasureTypes.PRESSURE)
+                                    continue;
                                 // Leggo l'ultimo allarme del giorno per la misura
                                 DataTable alarms_table = wet_db.ExecCustomQuery("SELECT * FROM measures_alarms WHERE measures_id_measures = " + id_measure + " AND `timestamp` < '" + actual.AddDays(1.0d).ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' ORDER BY `timestamp` DESC LIMIT 1");
                                 if (alarms_table.Rows.Count > 0)
@@ -314,6 +317,8 @@ namespace WetLib
                                         alarms.Add(alarm);
                                 }
                                 // Passo il controllo al S.O. per l'attesa
+                                if (cancellation_token_source.IsCancellationRequested)
+                                    return;
                                 Sleep();
                             }
 
@@ -577,6 +582,9 @@ namespace WetLib
                                             ReportEvent(ev);
                                         }
                                     }
+                                    // Passo il controllo al S.O. per l'attesa
+                                    if (cancellation_token_source.IsCancellationRequested)
+                                        return;
                                     Sleep();
                                 }
                             }
@@ -898,10 +906,14 @@ namespace WetLib
                         }
                         // Decremento di un giorno
                         days--;
-                        // Passo il controllo al S.O.
+                        // Passo il controllo al S.O. per l'attesa
+                        if (cancellation_token_source.IsCancellationRequested)
+                            return;
                         Sleep();
                     }
-                    // Passo il controllo al S.O.
+                    // Passo il controllo al S.O. per l'attesa
+                    if (cancellation_token_source.IsCancellationRequested)
+                        return;
                     Sleep();
                 }
             }

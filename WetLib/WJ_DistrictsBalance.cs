@@ -36,7 +36,6 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         public WJ_DistrictsBalance()
-            : base(JOB_NAME)
         {
             // Millisecondi di attesa fra le esecuzioni
             job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
@@ -121,6 +120,9 @@ namespace WetLib
                             " AND `timestamp` > '" + start.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' ORDER BY `timestamp` DESC LIMIT 1");
                         if (tmp.Rows.Count == 1)
                             lasts.Add(Convert.ToDateTime(tmp.Rows[0][0]));
+                        // Passo il controllo al S.O. per l'attesa
+                        if (cancellation_token_source.IsCancellationRequested)
+                            return;
                         Sleep();
                     }
                     if (lasts.Count == measures.Rows.Count)
@@ -252,7 +254,9 @@ namespace WetLib
                 {
                     WetDebug.GestException(ex);
                 }
-                // Tempo di attesa fra le esecuzioni
+                // Passo il controllo al S.O. per l'attesa
+                if (cancellation_token_source.IsCancellationRequested)
+                    return;
                 Sleep();
             }                           
         }

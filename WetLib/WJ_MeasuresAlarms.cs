@@ -142,7 +142,6 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         public WJ_MeasuresAlarms()
-            : base(JOB_NAME)
         {
             // Millisecondi di attesa fra le esecuzioni
             job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
@@ -333,8 +332,9 @@ namespace WetLib
                         // C'è un allarme valido, lo inserisco
                         InsertAlarm(alarm);
                     }
-                    // Metto in pausa il job
-                    Sleep();
+                    // Passo il controllo al S.O. per l'attesa
+                    if (cancellation_token_source.IsCancellationRequested)
+                        return;
                 }
             }
             catch (Exception ex)

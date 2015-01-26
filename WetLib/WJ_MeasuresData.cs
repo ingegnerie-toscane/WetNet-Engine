@@ -100,7 +100,6 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         public WJ_MeasuresData()
-            : base(JOB_NAME)
         {
             // Millisecondi di attesa fra le esecuzioni
             job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
@@ -273,6 +272,9 @@ namespace WetLib
                 {
                     WetDebug.GestException(ex);
                 }
+                // Passo il controllo al S.O. per l'attesa
+                if (cancellation_token_source.IsCancellationRequested)
+                    return;
                 Sleep();
             }
         }
