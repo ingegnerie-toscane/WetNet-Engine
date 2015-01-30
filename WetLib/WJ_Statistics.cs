@@ -659,11 +659,16 @@ namespace WetLib
 
         /// <summary>
         /// Esegue le correlazioni fra le misure
-        /// </summary>
+        /// </summary>        
         void MeasuresCorrelations()
-        {
+        {            
+            WetDBConn db = null;
             try
             {
+                // Carico la configurazione del DSN
+                WetConfig cfg = new WetConfig();
+                // Istanzio la connessione al database
+                db = new WetDBConn(cfg.GetWetDBDSN(), true);
                 // Imposto il timestamp di correlazione
                 last_correlation = DateTime.Now;
                 // Creazione della lista delle tuple
@@ -671,12 +676,12 @@ namespace WetLib
                 // Calcolo il primo giorno di analisi
                 DateTime first_day = DateTime.Now.Subtract(new TimeSpan(CORRELATION_TIME_DAYS, 0, 0, 0));
                 // Acquisisco tutte le misure configurate
-                DataTable measures = wet_db.ExecCustomQuery("SELECT * FROM measures");
+                DataTable measures = db.ExecCustomQuery("SELECT * FROM measures");
                 // Ciclo per tutte le misure configurate
                 foreach (DataRow measure in measures.Rows)
                 {
                     // Acquisisco l'id della misura
-                    int id_measure = Convert.ToInt32(measure["id_measures"]);                    
+                    int id_measure = Convert.ToInt32(measure["id_measures"]);
                     try
                     {
                         // Ciclo per tutte le misure eccetto la presente
@@ -691,39 +696,39 @@ namespace WetLib
                             if (id_measure == id_other_measure)
                                 continue;
                             try
-                            {                                
+                            {
                                 // Controllo che la tupla non esista
                                 if (measures_tuples.Any(x => x == new Tuple<int, int>(id_measure, id_other_measure) || x == new Tuple<int, int>(id_other_measure, id_measure)))
                                     continue;
                                 // Calcolo la correlazione con l'indice di Bravais-Pearson
-                                DataTable dt = wet_db.ExecCustomQuery(
+                                DataTable dt = db.ExecCustomQuery(
                                     "SELECT ((AVG(dt.mul) - (AVG(dt.v1) * AVG(dt.v2))) / (STDDEV_POP(dt.v1) * STDDEV_POP(dt.v2))) AS pearson_correlation " +
                                     "FROM " +
                                     "(" +
                                     "   SELECT t1.`timestamp` AS ts, t1.`value` AS v1, t2.`value` AS v2, (t1.`value` * t2.`value`) AS mul" +
                                     "   FROM data_measures t1" +
                                     "   INNER JOIN data_measures t2" +
-                                    "   ON t1.`timestamp` = t2.`timestamp` AND t1.measures_id_measures = " + id_measure.ToString() + 
-                                    "   AND t2.measures_id_measures = " + id_other_measure.ToString() + 
-                                    "   AND t1.`timestamp` >= '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" + 
+                                    "   ON t1.`timestamp` = t2.`timestamp` AND t1.measures_id_measures = " + id_measure.ToString() +
+                                    "   AND t2.measures_id_measures = " + id_other_measure.ToString() +
+                                    "   AND t1.`timestamp` >= '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
                                     "   AND t2.`timestamp` >= '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
                                     "   ORDER BY ts ASC" +
                                     ") AS dt");
                                 double correlation = Convert.ToDouble(dt.Rows[0]["pearson_correlation"]);
                                 // Controllo l'ordine della tupla
                                 int tp_type = 0;
-                                DataTable tp0 = wet_db.ExecCustomQuery("SELECT * FROM measures_correlations " +
+                                DataTable tp0 = db.ExecCustomQuery("SELECT * FROM measures_correlations " +
                                     "WHERE `id_first_measure` = " + id_measure.ToString() + " AND `id_second_measure` = " + id_other_measure.ToString());
-                                DataTable tp1 = wet_db.ExecCustomQuery("SELECT * FROM measures_correlations " +
+                                DataTable tp1 = db.ExecCustomQuery("SELECT * FROM measures_correlations " +
                                     "WHERE `id_first_measure` = " + id_other_measure.ToString() + " AND `id_second_measure` = " + id_measure.ToString());
                                 if (tp0.Rows.Count > 1)
                                 {
-                                    wet_db.ExecCustomCommand("DELETE FROM measures_correlations " +
+                                    db.ExecCustomCommand("DELETE FROM measures_correlations " +
                                         "WHERE `id_first_measure` = " + id_measure.ToString() + " AND `id_second_measure` = " + id_other_measure.ToString());
                                 }
                                 if (tp1.Rows.Count > 1)
                                 {
-                                    wet_db.ExecCustomCommand("DELETE FROM measures_correlations " +
+                                    db.ExecCustomCommand("DELETE FROM measures_correlations " +
                                         "WHERE `id_first_measure` = " + id_other_measure.ToString() + " AND `id_second_measure` = " + id_measure.ToString());
                                 }
                                 if (tp1.Rows.Count == 1)
@@ -745,7 +750,7 @@ namespace WetLib
                                             "ON DUPLICATE KEY UPDATE `pearson_correlation` = " + correlation.ToString().Replace(',', '.');
                                         break;
                                 }
-                                wet_db.ExecCustomCommand(qs);
+                                db.ExecCustomCommand(qs);
                             }
                             catch (Exception ex0)
                             {
@@ -753,6 +758,8 @@ namespace WetLib
                             }
                             // Aggiungo la tupla
                             measures_tuples.Add(new Tuple<int, int>(id_measure, id_other_measure));
+                            // Passo il controllo al S.O.
+                            Thread.Sleep(1);
                         }
                     }
                     catch (Exception ex1)

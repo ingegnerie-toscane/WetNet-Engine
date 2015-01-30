@@ -203,7 +203,6 @@ namespace WetLib
                             if (Convert.ToDateTime(samples.Rows[ii][0]) >= stop)
                             {
                                 bool is_reliable;
-
                                 // Interpolo
                                 double y0 = samples.Rows[jj][1] == DBNull.Value ? 0.0d : Convert.ToDouble(samples.Rows[jj][1]);
                                 double y1 = samples.Rows[ii][1] == DBNull.Value ? 0.0d : Convert.ToDouble(samples.Rows[ii][1]);
@@ -221,7 +220,7 @@ namespace WetLib
                                 // Aggiungo la riga
                                 dest.Rows.Add(stop, is_reliable, y, id_measure, id_odbc_dsn);
                                 // Aggiorno i contatori
-                                if ((Convert.ToDateTime(samples.Rows[ii + 1][0]) - stop) <= interpolation_time)
+                                if ((Convert.ToDateTime(samples.Rows[ii][0]) - stop) <= interpolation_time)
                                     jj = ii++;
                                 start = stop;
                                 stop = start + interpolation_time;

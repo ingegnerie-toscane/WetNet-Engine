@@ -298,7 +298,7 @@ namespace WetLib
                             // Creo un vettore delle misure in allarme
                             List<WJ_MeasuresAlarms.AlarmStruct> alarms = new List<WJ_MeasuresAlarms.AlarmStruct>();
                             // Controllo se ci sono allarmi sulle misure
-                            DataTable measures_of_district_table = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `measures_connections_id_odbcdsn` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString());
+                            DataTable measures_of_district_table = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `measures_connections_id_odbcdsn`, `type` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString());
                             foreach (DataRow measure in measures_of_district_table.Rows)
                             {
                                 // Acquisisco l'ID della misura
