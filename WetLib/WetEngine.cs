@@ -25,7 +25,7 @@ namespace WetLib
         /// <summary>
         /// Job per la copia dei dati degli LCF
         /// </summary>
-        WJ_LCFCopy wj_lcf_copy;
+        WJ_Agent_LCF wj_lcf_copy;
 
         /// <summary>
         /// Job per la gestione dei dati delle misure
@@ -62,7 +62,7 @@ namespace WetLib
         public WetEngine()
         {
             // Istanziamento dei jobs
-            wj_lcf_copy = new WJ_LCFCopy();
+            wj_lcf_copy = new WJ_Agent_LCF();
             wj_measures_data = new WJ_MeasuresData();
             wj_districts_balance = new WJ_DistrictsBalance();
             wj_statistics = new WJ_Statistics();

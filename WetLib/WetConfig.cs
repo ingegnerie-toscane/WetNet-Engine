@@ -274,8 +274,13 @@ namespace WetLib
         /// <summary>
         /// Struttura di configurazione per job di copia degli LCF
         /// </summary>
-        public struct WJ_LCFCopy_Config_Struct
+        public struct WJ_Agent_LCF_Config_Struct
         {
+            /// <summary>
+            /// Stato di abilitazione dell'agente
+            /// </summary>
+            public bool enabled;
+
             /// <summary>
             /// Nome del DSN con il database di origine degli LCF
             /// </summary>
@@ -414,11 +419,12 @@ namespace WetLib
         /// Restituisce la struttura con la configurazione per il job di copia degli LCF
         /// </summary>
         /// <returns>Struttura con la configurazione</returns>
-        public WJ_LCFCopy_Config_Struct GetWJ_LCFCopy_Config()
+        public WJ_Agent_LCF_Config_Struct GetWJ_Agent_LCF_Config()
         {
-            WJ_LCFCopy_Config_Struct cfg;
+            WJ_Agent_LCF_Config_Struct cfg;
 
-            cfg.odbc_dsn = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "LCFCopy").Value;
+            cfg.enabled = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_LCF").Attribute("enabled").Value);
+            cfg.odbc_dsn = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_LCF").Value;
 
             return cfg;
         }

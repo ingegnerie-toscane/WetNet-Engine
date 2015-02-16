@@ -10,7 +10,7 @@ namespace WetLib
     /// <summary>
     /// Job per la copia dei dati degli LCF
     /// </summary>
-    sealed class WJ_LCFCopy : WetJob
+    sealed class WJ_Agent_LCF : WetJob
     {
         #region Costanti
 
@@ -45,12 +45,17 @@ namespace WetLib
         /// <summary>
         /// DSN ODBC del database sorgente degli LCF
         /// </summary>
-        readonly string lcf_dsn;
+        string lcf_dsn;
 
         /// <summary>
         /// DSN ODBC del database WetNet
         /// </summary>
-        readonly string wetnet_dsn;
+        string wetnet_dsn;
+
+        /// <summary>
+        /// Configurazione
+        /// </summary>
+        WetConfig.WJ_Agent_LCF_Config_Struct config;
 
         #endregion
 
@@ -59,15 +64,12 @@ namespace WetLib
         /// <summary>
         /// Costruttore
         /// </summary>
-        public WJ_LCFCopy()
+        public WJ_Agent_LCF()
         {
             // Millisecondi di attesa fra le esecuzioni
             job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
             // Istanzio la configurazione
-            cfg = new WetConfig();
-            // Carico i parametri della configurazione
-            lcf_dsn = cfg.GetWJ_LCFCopy_Config().odbc_dsn;
-            wetnet_dsn = cfg.GetWetDBDSN();
+            cfg = new WetConfig();            
         }
 
         #endregion
@@ -79,6 +81,11 @@ namespace WetLib
         /// </summary>
         protected override void Load()
         {
+            // carico la configurazione
+            config = cfg.GetWJ_Agent_LCF_Config();
+            // Carico i parametri della configurazione
+            lcf_dsn = config.odbc_dsn;
+            wetnet_dsn = cfg.GetWetDBDSN();
             // Istanzio le connessioni ai database
             lcf_db = new WetDBConn(lcf_dsn, false);
             wet_db = new WetDBConn(wetnet_dsn, true);
@@ -89,6 +96,9 @@ namespace WetLib
         /// </summary>
         protected override void DoJob()
         {
+            // Se il Job non è abilitato esco
+            if (!config.enabled)
+                return;
             // Acquisisco le tabelle degli LCF
             string[] lcf_tables = GetLCFTables();
             // Ciclo per tutte le tabelle
