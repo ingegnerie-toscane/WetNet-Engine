@@ -9,9 +9,8 @@ namespace WetLib
     /// <summary>
     /// Classe per la gestione degli strumenti Bimatik
     /// </summary>
-    sealed class WJ_Agent_Bimatik : WetJob
+    sealed class WJ_Agent_Primayer : WetJob
     {
-        //#region 
         #region Funzioni del Job
 
         protected override void DoJob()
