@@ -183,7 +183,7 @@ namespace WetLib
         /// <param name="table_name">Nome della tabella</param>
         /// <returns>Dataset restituito</returns>
         public DataSet GetDataset(string table_name)
-        {
+        {           
             OdbcDataAdapter da = new OdbcDataAdapter("SELECT * FROM " + table_name, conn);
             DataSet ds = new DataSet();
             da.Fill(ds);
