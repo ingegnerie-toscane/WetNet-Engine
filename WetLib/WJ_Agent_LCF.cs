@@ -12,15 +12,6 @@ namespace WetLib
     /// </summary>
     sealed class WJ_Agent_LCF : WetJob
     {
-        #region Costanti
-
-        /// <summary>
-        /// Nome del job
-        /// </summary>
-        const string JOB_NAME = "WJ_LCFCopy";
-
-        #endregion
-
         #region Istanze
 
         /// <summary>

@@ -25,7 +25,12 @@ namespace WetLib
         /// <summary>
         /// Job per la copia dei dati degli LCF
         /// </summary>
-        WJ_Agent_LCF wj_lcf_copy;
+        WJ_Agent_LCF wj_agent_lcf;
+
+        /// <summary>
+        /// Job per la gestione dei WLB
+        /// </summary>
+        WJ_Agent_WetNetLinkBox wj_agent_wetnetlinkbox;
 
         /// <summary>
         /// Job per la gestione dei dati delle misure
@@ -62,7 +67,8 @@ namespace WetLib
         public WetEngine()
         {
             // Istanziamento dei jobs
-            wj_lcf_copy = new WJ_Agent_LCF();
+            wj_agent_lcf = new WJ_Agent_LCF();
+            wj_agent_wetnetlinkbox = new WJ_Agent_WetNetLinkBox();
             wj_measures_data = new WJ_MeasuresData();
             wj_districts_balance = new WJ_DistrictsBalance();
             wj_statistics = new WJ_Statistics();
@@ -80,7 +86,8 @@ namespace WetLib
         protected override void Load()
         {
             // Avvio dei jobs
-            wj_lcf_copy.Start();
+            wj_agent_lcf.Start();
+            wj_agent_wetnetlinkbox.Start();
             wj_measures_data.Start();
             wj_districts_balance.Start();
             wj_statistics.Start();
@@ -102,7 +109,8 @@ namespace WetLib
         protected override void UnLoad()
         {
             // Arresto dei jobs
-            wj_lcf_copy.Stop();
+            wj_agent_lcf.Stop();
+            wj_agent_wetnetlinkbox.Stop();
             wj_measures_data.Stop();
             wj_districts_balance.Stop();
             wj_statistics.Stop();
