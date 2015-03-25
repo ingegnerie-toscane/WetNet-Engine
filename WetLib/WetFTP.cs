@@ -89,7 +89,10 @@ namespace WetLib
             this.passive = passive;
             this.username = username;
             this.password = password;
-            this.folder = folder;
+            if (folder == string.Empty)
+                this.folder = "/";
+            else
+                this.folder = folder.Last() == '/' ? folder : folder + '/';
             // Inizializzazione
             FTPAPI_Initialize();
         }
@@ -166,7 +169,12 @@ namespace WetLib
         /// <returns>Directory corrente</returns>
         public string GetCurrentFolder()
         {
-            return FTPAPI_GetStringQuery(WebRequestMethods.Ftp.PrintWorkingDirectory);
+            string path = FTPAPI_Initialize().RequestUri.AbsolutePath;
+
+            if (path.Last() == '/')
+                path = path.Remove(path.Length - 1);
+
+            return path;
         }
 
         /// <summary>
@@ -186,7 +194,7 @@ namespace WetLib
             foreach (string dir in complete_dirs)
             {
                 if (dir[0] == 'd')
-                    dirs.Add(dir.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ElementAtOrDefault(8));
+                    dirs.Add(dir.Split(new char[] { ' ' }, 9, StringSplitOptions.RemoveEmptyEntries).Last());
             }
 
             return dirs.ToArray();
@@ -239,8 +247,8 @@ namespace WetLib
             int depth = base_node.Count(x => x == '/');
             if (depth < MAX_FOLDER_DEEP)
             {
-                string[] sub_nodes = ListSubFolders(base_node);                
-                Parallel.For(0, sub_nodes.Length, ii =>
+                string[] sub_nodes = ListSubFolders(base_node);
+                for (int ii = 0; ii < sub_nodes.Length; ii++)
                 {
                     if ((sub_nodes[ii] != ".") && (sub_nodes[ii] != ".."))
                     {
@@ -248,7 +256,7 @@ namespace WetLib
                         nodes.Add(sub_nodes[ii]);
                         nodes.AddRange(GetFolderTree(sub_nodes[ii]));
                     }
-                });
+                }
             }
 
             return nodes.ToArray();
@@ -262,9 +270,10 @@ namespace WetLib
         /// <param name="number_of_headerlines_to_exclude">Numero di righe di intestazione da saltare</param>
         /// <param name="max_cols">Numero massimo di colonne della tabella</param>
         /// <param name="datetime_format_str">Formato della data e ora</param>
+        /// <param name="has_separated_date_time">Indica se la data e ora sono separate</param>
         /// <returns>Tabella dati</returns>
         public DataTable DownloadCSVFileToTable(string file_name, char separator, int number_of_headerlines_to_exclude, int max_cols, 
-            string datetime_format_str)
+            string datetime_format_str, bool has_separated_date_time)
         {
             DataTable dt = new DataTable();
 
@@ -279,8 +288,8 @@ namespace WetLib
             using (StreamReader sr = new StreamReader(ftp.GetResponse().GetResponseStream()))
             {
                 List<string> rows = new List<string>();
-                int line_cnt = 0;
-                string[] lines = sr.ReadToEnd().Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                int line_cnt = 0;         
+                string[] lines = sr.ReadToEnd().Replace("\0", "").Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach(string line in lines)
                 {
                     // Controllo se devo saltarla
@@ -289,8 +298,15 @@ namespace WetLib
                         line_cnt++;
                         continue;
                     }
+                    // Unifico data e ora se necessario rimuovendo il carattere di separazione
+                    string tmp_line = line;
+                    if (has_separated_date_time)
+                    {
+                        int idx = line.IndexOf(separator, 0);
+                        tmp_line = line.Remove(idx, 1).Insert(idx, " ");
+                    }
                     // Separo le colonne
-                    string[] vals = line.Split(new char[] {separator}, max_cols, StringSplitOptions.RemoveEmptyEntries);                    
+                    string[] vals = tmp_line.Split(new char[] {separator}, max_cols, StringSplitOptions.RemoveEmptyEntries);                    
                     // Tento l'interpretazione dei dati
                     try
                     {
@@ -300,7 +316,7 @@ namespace WetLib
                             if (ii < vals.Length)
                             {
                                 // Tolgo doppi apici se presenti
-                                vals[ii] = vals[ii].Trim(new char[] { '"' });
+                                vals[ii] = vals[ii].Replace("\"", "");
                             }
                             if (ii == 0)
                             {
@@ -316,6 +332,8 @@ namespace WetLib
                                 if (ii < vals.Length)
                                 {
                                     vals[ii] = vals[ii].Replace(",", ".");
+                                    if (vals[ii] == string.Empty)
+                                        vals[ii] = "0.0";
                                     bool res = double.TryParse(vals[ii], NumberStyles.Any, CultureInfo.InvariantCulture, out tmp);
                                     if (res == false)
                                         continue;

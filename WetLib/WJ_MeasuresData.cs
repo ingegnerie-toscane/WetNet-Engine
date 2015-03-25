@@ -141,6 +141,7 @@ namespace WetLib
                     // Acquisisco l'ID univoco della misura
                     int id_measure = Convert.ToInt32(measure["id_measures"]);
                     int id_odbc_dsn = Convert.ToInt32(measure["connections_id_odbcdsn"]);
+                    MeasureTypes mtype = (MeasureTypes)Convert.ToInt32(measure["type"]);
                     bool reliable = Convert.ToBoolean(measure["reliable"]);
                     double energy_specific_content = Convert.ToDouble(measure["energy_specific_content"]) * 3.6d;   // KWh/mc -> KW/(l/s)
                     // Popolo le coordinate database per la misura

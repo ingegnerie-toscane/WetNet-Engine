@@ -49,6 +49,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="WetJob.cs" />
     <Compile Include="WetUtility.cs" />
+    <Compile Include="WJ_Agent_Primayer.cs" />
     <Compile Include="WJ_Agent_WetNetLinkBox.cs" />
     <Compile Include="WJ_DistrictsBalance.cs" />
     <Compile Include="WJ_Events.cs" />
@@ -58,6 +59,7 @@
     <Compile Include="WJ_MeasuresData.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="LICENSE.txt" />
     <Content Include="ReleaseNote.txt" />
     <Content Include="WetEngine.config.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

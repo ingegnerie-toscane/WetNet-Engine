@@ -33,6 +33,11 @@ namespace WetLib
         WJ_Agent_WetNetLinkBox wj_agent_wetnetlinkbox;
 
         /// <summary>
+        /// Job per la gestione dei device Primayer
+        /// </summary>
+        WJ_Agent_Primayer wj_agent_primayer;
+
+        /// <summary>
         /// Job per la gestione dei dati delle misure
         /// </summary>
         WJ_MeasuresData wj_measures_data;
@@ -69,6 +74,7 @@ namespace WetLib
             // Istanziamento dei jobs
             wj_agent_lcf = new WJ_Agent_LCF();
             wj_agent_wetnetlinkbox = new WJ_Agent_WetNetLinkBox();
+            wj_agent_primayer = new WJ_Agent_Primayer();
             wj_measures_data = new WJ_MeasuresData();
             wj_districts_balance = new WJ_DistrictsBalance();
             wj_statistics = new WJ_Statistics();
@@ -88,6 +94,7 @@ namespace WetLib
             // Avvio dei jobs
             wj_agent_lcf.Start();
             wj_agent_wetnetlinkbox.Start();
+            wj_agent_primayer.Start();
             wj_measures_data.Start();
             wj_districts_balance.Start();
             wj_statistics.Start();
@@ -111,6 +118,7 @@ namespace WetLib
             // Arresto dei jobs
             wj_agent_lcf.Stop();
             wj_agent_wetnetlinkbox.Stop();
+            wj_agent_primayer.Stop();
             wj_measures_data.Stop();
             wj_districts_balance.Stop();
             wj_statistics.Stop();

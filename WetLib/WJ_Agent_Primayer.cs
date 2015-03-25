@@ -8,9 +8,9 @@ using System.Data;
 namespace WetLib
 {
     /// <summary>
-    /// Job per il trattamento dei dati degli WetNet Link Box (WLB)
+    /// Classe per la gestione dei device Primayer via FTP
     /// </summary>
-    sealed class WJ_Agent_WetNetLinkBox : WetJob
+    class WJ_Agent_Primayer : WetJob
     {
         #region Istanze
 
@@ -41,7 +41,7 @@ namespace WetLib
         /// <summary>
         /// Configurazione del job
         /// </summary>
-        WetConfig.WJ_Agent_WLB_Config_Struct config;
+        WetConfig.WJ_Agent_Primayer_Config_Struct config;
 
         #endregion
 
@@ -50,7 +50,7 @@ namespace WetLib
         /// <summary>
         /// Costruttore
         /// </summary>
-        public WJ_Agent_WetNetLinkBox()
+        public WJ_Agent_Primayer()
         {
             // Millisecondi di attesa fra le esecuzioni
             job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
@@ -68,7 +68,7 @@ namespace WetLib
         protected override void Load()
         {
             // Carico la configurazione
-            config = cfg.GetWJ_Agent_WetNetLinkBox_Config();
+            config = cfg.GetWJ_Agent_Primayer_Config();
             // Carico i parametri della configurazione
             wetnet_dsn = cfg.GetWetDBDSN();
             wet_ftp = new WetFTP(config.ftp_server_name, config.ftp_server_port,
@@ -86,7 +86,7 @@ namespace WetLib
             // Se il Job non è abilitato esco
             if (!config.enabled)
                 return;
-            
+
             try
             {
                 // Acquisisco tutte le path della base FTP
@@ -108,25 +108,19 @@ namespace WetLib
                         if (file.Substring(file.Length - 4, 4).ToLower() != ".csv")
                             continue;
                         // Se il file non contiene separatori è segno che non è valido
-                        if (!file.Any(x => (x == '-') || (x == '_')))
+                        if (!file.Any(x => x == '_'))
                             continue;
-                        // Determino il tipo di separatore per il file
-                        char fsep = '-';
-                        if (file.Contains('_'))
-                            fsep = '_';
-                        // Determino il tipo di separatore per il formato CSV
-                        char separator = fsep == '-' ? ';' : '\t';
                         // Determino il nome del misuratore
-                        string device_name = file.Substring(0, file.IndexOf(fsep)).ToLower();
+                        string device_name = file.Substring(0, file.IndexOf('_')).ToLower();
                         // Se il device è già stato processato continuo
                         if (!device_lastfile.ContainsKey(device_name))
                         {
                             // Controllo se lo strumento esiste nel database
-                            DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM wlb_identities WHERE `wlb_name` = '" + device_name + "'");
+                            DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM primayer_identities WHERE `primayer_name` = '" + device_name + "'");
                             if (dt.Rows.Count == 0)
                             {
                                 // Se il device non esiste, lo creo
-                                wet_db.ExecCustomCommand("INSERT INTO wlb_identities VALUES ('" + device_name + "', '', '')");
+                                wet_db.ExecCustomCommand("INSERT INTO primayer_identities VALUES ('" + device_name + "', '', '')");
                                 // Aggiorno il dizionario
                                 device_lastfile.Add(device_name, string.Empty);
                             }
@@ -142,14 +136,14 @@ namespace WetLib
                             if (files.IndexOf(file) <= files.IndexOf(device_lastfile[device_name]))
                                 continue;
                         }
-                        // Il file è valido, eseguo il download
-                        DataTable file_dt = wet_ftp.DownloadCSVFileToTable(folder + "/" + file, separator, 1, 7, "MM/dd/yy HH:mm:ss", false);
+                        // Il file è valido, eseguo il download                        
+                        DataTable file_dt = wet_ftp.DownloadCSVFileToTable(folder + "/" + file, ';', 2, 7, "dd/MM/yyyy HH:mm:ss", true);
                         // Aggiungo il campo di riferimento
-                        file_dt.Columns.Add(new DataColumn("wlb_identities_wlb_name", typeof(string), "'" + device_name + "'"));
+                        file_dt.Columns.Add(new DataColumn("primayer_identities_primayer_name", typeof(string), "'" + device_name + "'"));
                         // Inserisco i dati in tabella
-                        wet_db.TableInsert(file_dt, "wlb_data");
+                        wet_db.TableInsert(file_dt, "primayer_data");
                         // Aggiorno il campo dell'ultimo file processato
-                        wet_db.ExecCustomCommand("UPDATE wlb_identities SET `last_processed_filename` = '" + file + "' WHERE `wlb_name` = '" + device_name + "'");
+                        wet_db.ExecCustomCommand("UPDATE primayer_identities SET `last_processed_filename` = '" + file + "' WHERE `primayer_name` = '" + device_name + "'");
                     }
                 }
             }
@@ -157,7 +151,7 @@ namespace WetLib
             {
                 WetDebug.GestException(ex);
             }
-            
+
         }
 
         #endregion
