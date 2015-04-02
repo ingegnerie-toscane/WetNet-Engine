@@ -114,7 +114,7 @@ namespace WetLib
         {
             // Istanzio la connessione al database wetnet
             WetConfig cfg = new WetConfig();
-            wet_db = new WetDBConn(cfg.GetWetDBDSN(), true);
+            wet_db = new WetDBConn(cfg.GetWetDBDSN(), null, null, true);
             config = cfg.GetWJ_Statistics_Config();
         }
 
@@ -694,7 +694,7 @@ namespace WetLib
                 // Carico la configurazione del DSN
                 WetConfig cfg = new WetConfig();
                 // Istanzio la connessione al database
-                db = new WetDBConn(cfg.GetWetDBDSN(), true);
+                db = new WetDBConn(cfg.GetWetDBDSN(), null, null, true);
                 // Imposto il timestamp di correlazione
                 last_correlation = DateTime.Now;
                 // Creazione della lista delle tuple

@@ -201,7 +201,7 @@ namespace WetLib
         {
             // Istanzio la connessione al database wetnet
             WetConfig wcfg = new WetConfig();
-            wet_db = new WetDBConn(wcfg.GetWetDBDSN(), true);
+            wet_db = new WetDBConn(wcfg.GetWetDBDSN(), null, null, true);
             cfg = wcfg.GetWJ_Events_Config();
         }
 

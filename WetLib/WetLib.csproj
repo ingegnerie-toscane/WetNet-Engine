@@ -60,7 +60,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="LICENSE.txt" />
-    <Content Include="ReleaseNote.txt" />
     <Content Include="WetEngine.config.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <SubType>Designer</SubType>

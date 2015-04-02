@@ -104,8 +104,8 @@ namespace WetLib
             lcf_dsn = config.odbc_dsn;
             wetnet_dsn = cfg.GetWetDBDSN();
             // Istanzio le connessioni ai database
-            lcf_db = new WetDBConn(lcf_dsn, false);
-            wet_db = new WetDBConn(wetnet_dsn, true);
+            lcf_db = new WetDBConn(lcf_dsn, null, null, false);
+            wet_db = new WetDBConn(wetnet_dsn, null, null, true);
         }
 
         /// <summary>

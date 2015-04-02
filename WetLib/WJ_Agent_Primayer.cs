@@ -101,7 +101,7 @@ namespace WetLib
                 config.use_ssl, config.is_passive_connection,
                 config.username, config.password, config.folder);
             // Istanzio le connessioni
-            wet_db = new WetDBConn(wetnet_dsn, true);
+            wet_db = new WetDBConn(wetnet_dsn, null, null, true);
         }
 
         /// <summary>

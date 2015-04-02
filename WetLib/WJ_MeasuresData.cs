@@ -65,6 +65,16 @@ namespace WetLib
             public string odbc_connection;
 
             /// <summary>
+            /// Nome utente
+            /// </summary>
+            public string username;
+
+            /// <summary>
+            /// Password
+            /// </summary>
+            public string password;
+
+            /// <summary>
             /// Nome della tabella
             /// </summary>
             public string table_name;
@@ -146,7 +156,7 @@ namespace WetLib
         protected override void Load()
         {
             // Istanzio la connessione al database wetnet
-            wet_db = new WetDBConn(config.wetdb_dsn, true);            
+            wet_db = new WetDBConn(config.wetdb_dsn, null, null, true);            
         }
 
         /// <summary>
@@ -169,11 +179,14 @@ namespace WetLib
                     int id_odbc_dsn = Convert.ToInt32(measure["connections_id_odbcdsn"]);
                     MeasureTypes mtype = (MeasureTypes)Convert.ToInt32(measure["type"]);
                     bool reliable = Convert.ToBoolean(measure["reliable"]);
+                    DateTime start_date = Convert.ToDateTime(measure["update_timestamp"]);
                     double energy_specific_content = Convert.ToDouble(measure["energy_specific_content"]) * 3.6d;   // KWh/mc -> KW/(l/s)
                     // Popolo le coordinate database per la misura
                     MeasureDBCoord_Struct measure_coord;
                     int dsn_id = Convert.ToInt32(measure["connections_id_odbcdsn"]);
                     measure_coord.odbc_connection = Convert.ToString(connections.Rows.Find(dsn_id)["odbc_dsn"]);
+                    measure_coord.username = (connections.Rows.Find(dsn_id)["username"] == DBNull.Value ? null : Convert.ToString(connections.Rows.Find(dsn_id)["username"]));
+                    measure_coord.password = (connections.Rows.Find(dsn_id)["password"] == DBNull.Value ? null : Convert.ToString(connections.Rows.Find(dsn_id)["password"]));                    
                     measure_coord.table_name = Convert.ToString(measure["table_name"]);
                     measure_coord.timestamp_column = Convert.ToString(measure["table_timestamp_column"]);
                     measure_coord.value_column = Convert.ToString(measure["table_value_column"]);
@@ -181,16 +194,18 @@ namespace WetLib
                     measure_coord.relational_id_value = Convert.ToString(measure["table_relational_id_value"]);
                     measure_coord.relational_id_type = (WetDBConn.PrimaryKeyColumnTypes)Convert.ToInt32(measure["table_relational_id_type"]);
                     // Istanzio la connessione al database sorgente
-                    WetDBConn source_db = new WetDBConn(measure_coord.odbc_connection, false);
+                    WetDBConn source_db = new WetDBConn(measure_coord.odbc_connection, measure_coord.username, measure_coord.password, false);
                     // Estraggo il timestamp dell'ultimo valore scritto nel database sorgente
-                    DateTime last_source = GetLastSourceSample(source_db, measure_coord);
+                    DateTime last_source = GetLastSourceSample(source_db, start_date, measure_coord);
                     // Estraggo il timestamp dell'ultimo valore scritto nel database WetNet
                     DateTime last_dest = GetLastDestSample(id_measure);
+                    if (last_dest == DateTime.MinValue)
+                        last_dest = start_date;
                     // Controllo se ci sono campioni da acquisire
                     if (last_dest < last_source)
                     {
                         // Acquisisco tutti i campioni da scrivere
-                        DataTable samples = source_db.ExecCustomQuery(GetBaseQueryStr(measure_coord, " `" + measure_coord.timestamp_column + "` > '" + last_dest.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'", " ORDER BY `" + measure_coord.timestamp_column + "` ASC LIMIT " + MAX_RECORDS_IN_QUERY.ToString()));
+                        DataTable samples = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, last_dest, DateTime.Now, WetDBConn.OrderTypes.ASC, MAX_RECORDS_IN_QUERY));
                         DataTable dest = new DataTable();
                         dest.Columns.Add("timestamp", typeof(DateTime));
                         dest.Columns.Add("reliable", typeof(bool));
@@ -312,50 +327,75 @@ namespace WetLib
         /// <summary>
         /// Restituisce la stringa di query base per la misura
         /// </summary>
+        /// <param name="connection">Connessione</param>
         /// <param name="measure_coord">Coordinata del database per la misura</param>
-        /// <param name="where_clausole">Clausola WHERE</param>       
-        /// <param name="other_clausoles">Altre clausole</param>
+        /// <param name="start_date">Data di inizio nella clausola WHERE</param>
+        /// <param name="stop_date">Data di fine nella clausola WHERE</param>    
+        /// <param name="order">Tipo di ordinamento</param>
+        /// <param name="num_records">Numero di records (0 = massimo concesso)</param>
         /// <returns>Stringa di query</returns>
         /// <remarks>
         /// Per stringa base si intende una query compilata nelle specifiche SELECT, FROM e WHERE (solo per tabelle relazionali),
         /// con la possibilità di aggiungere parametri.
         /// </remarks>
-        string GetBaseQueryStr(MeasureDBCoord_Struct measure_coord, string where_clausole, string other_clausoles)
+        string GetBaseQueryStr(WetDBConn connection, MeasureDBCoord_Struct measure_coord, DateTime start_date, DateTime stop_date, WetDBConn.OrderTypes order, ulong num_records)
         {
             string query;
 
-            query = "SELECT `" + measure_coord.timestamp_column + "`, `" + measure_coord.value_column + "` FROM " + measure_coord.table_name;
-            if (measure_coord.relational_id_column != string.Empty)
+            switch (connection.GetProvider())
             {
-                query += " WHERE `" + measure_coord.relational_id_column + "` = ";
-                switch (measure_coord.relational_id_type)
-                {
-                    case WetDBConn.PrimaryKeyColumnTypes.REAL:
-                        query += measure_coord.relational_id_value.Replace(',', '.');
-                        break;
+                default:
+                    query = string.Empty;
+                    break;
 
-                    case WetDBConn.PrimaryKeyColumnTypes.DATETIME:
-                        query += "'" + Convert.ToDateTime(measure_coord.relational_id_value).ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'";
-                        break;
+                case WetDBConn.ProviderType.ARCHESTRA_SQL:
+                    query = "SELECT ";
+                    if (num_records > 0)
+                        query += "TOP " + num_records.ToString() + " ";
+                    query += "Format(Datetime,'yyyy-MM-dd HH:mm:ss') AS " + measure_coord.timestamp_column + ", Format(Value, '#########0.00') AS '" + measure_coord.value_column + "' FROM " + measure_coord.table_name +
+                        " WHERE History.TagName = '" + measure_coord.value_column + "'" +
+                        " AND vValue IS NOT NULL " +
+                        "AND (Quality = 0 OR Quality = 1) " +
+                        "AND (QualityDetail = 192 OR QualityDetail = 202 OR QualityDetail = 64) " +
+                        "AND wwRetrievalMode = 'Full' " +
+                        "AND DateTime > CONVERT(datetime, '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', 120) " +
+                        "AND DateTime <= CONVERT(datetime, '" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', 120) ORDER BY " +
+                        measure_coord.timestamp_column + (order == WetDBConn.OrderTypes.ASC ? " ASC" : " DESC");
+                    break;
 
-                    case WetDBConn.PrimaryKeyColumnTypes.TEXT:
-                        query += "'" + measure_coord.relational_id_value + "'";
-                        break;
+                case WetDBConn.ProviderType.GENERIC_MYSQL:
+                    query = "SELECT `" + measure_coord.timestamp_column + "`, `" + measure_coord.value_column + "` FROM " + measure_coord.table_name +
+                        " WHERE ";
+                    if (measure_coord.relational_id_column != string.Empty)
+                    {
+                        query += "`" + measure_coord.relational_id_column + "` = ";
+                        switch (measure_coord.relational_id_type)
+                        {
+                            case WetDBConn.PrimaryKeyColumnTypes.REAL:
+                                query += measure_coord.relational_id_value.Replace(',', '.');
+                                break;
 
-                    default:
-                        query += measure_coord.relational_id_value;
-                        break;
-                }
-                if ((where_clausole != string.Empty) && (where_clausole != null))
-                    query += " AND (" + where_clausole + ")";
+                            case WetDBConn.PrimaryKeyColumnTypes.DATETIME:
+                                query += "'" + Convert.ToDateTime(measure_coord.relational_id_value).ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'";
+                                break;
+
+                            case WetDBConn.PrimaryKeyColumnTypes.TEXT:
+                                query += "'" + measure_coord.relational_id_value + "'";
+                                break;
+
+                            default:
+                                query += measure_coord.relational_id_value;
+                                break;
+                        }
+                        query += " AND ";
+                    }
+                    query += "(`" + measure_coord.timestamp_column + "` > '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                                "' AND `" + measure_coord.timestamp_column + "` <= '" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "')";
+                    query += " ORDER BY `" + measure_coord.timestamp_column + "` " + (order == WetDBConn.OrderTypes.ASC ? "ASC" : "DESC");
+                    if (num_records > 0)
+                        query += " LIMIT " + num_records.ToString();
+                    break;
             }
-            else
-            {
-                if ((where_clausole != string.Empty) && (where_clausole != null))
-                    query += " WHERE " + where_clausole;
-            }
-            if ((other_clausoles != string.Empty) && (other_clausoles != null))
-                query += " " + other_clausoles;
 
             return query;
         }
@@ -364,15 +404,16 @@ namespace WetLib
         /// Restituisce l'ultimo timestamp scritto nel database sorgente
         /// </summary>
         /// <param name="connection"></param>
+        /// <param name="start_date">Data di inizio</param>
         /// <param name="measure_coord"></param>
         /// <returns></returns>
-        DateTime GetLastSourceSample(WetDBConn connection, MeasureDBCoord_Struct measure_coord)
+        DateTime GetLastSourceSample(WetDBConn connection, DateTime start_date, MeasureDBCoord_Struct measure_coord)
         {
             DateTime ret = DateTime.MinValue;
 
             try
             {
-                DataTable dt = connection.ExecCustomQuery(GetBaseQueryStr(measure_coord, null, " ORDER BY `" + measure_coord.timestamp_column + "` DESC LIMIT 1"));
+                DataTable dt = connection.ExecCustomQuery(GetBaseQueryStr(connection, measure_coord, start_date, DateTime.Now, WetDBConn.OrderTypes.DESC, 1));
                 if (dt.Rows.Count == 1)
                     ret = Convert.ToDateTime(dt.Rows[0][0]);
             }

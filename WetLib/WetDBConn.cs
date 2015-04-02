@@ -131,6 +131,38 @@ namespace WetLib
             TIME = 6
         }
 
+        /// <summary>
+        /// Tipi di ordinamento
+        /// </summary>
+        public enum OrderTypes : int
+        {
+            /// <summary>
+            /// Ordinamento ascendente
+            /// </summary>
+            ASC = 0,
+
+            /// <summary>
+            /// Ordinamento discendente
+            /// </summary>
+            DESC = 1
+        }
+
+        /// <summary>
+        /// Providers di dati
+        /// </summary>
+        public enum ProviderType : int
+        {
+            /// <summary>
+            /// Database generico MySQL (x es.: Movicon)
+            /// </summary>
+            GENERIC_MYSQL = 0,
+
+            /// <summary>
+            /// SQL Server con Archestra
+            /// </summary>
+            ARCHESTRA_SQL = 1
+        }
+
         #endregion
 
         #region Istanze
@@ -148,11 +180,18 @@ namespace WetLib
         /// Costruttore
         /// </summary>
         /// <param name="odbc_dsn">DSN ODBC</param>
+        /// <param name="username">Nome utente</param>
+        /// <param name="password">Password</param>
         /// <param name="mysql_required">Indica se il database deve essere MySQL</param>
-        public WetDBConn(string odbc_dsn, bool mysql_required)
+        public WetDBConn(string odbc_dsn, string username, string password, bool mysql_required)
         {
+            string connection_string = "DSN=" + odbc_dsn;
+            if (username != null)
+                connection_string += "; Uid=" + username;
+            if (password != null)
+                connection_string += "; Pwd=" + password;
             // Istanzio la connessione
-            conn = new OdbcConnection("DSN=" + odbc_dsn);
+            conn = new OdbcConnection(connection_string);
             conn.Open();
             // Controllo che faccia riferimento ad un database MySQL
             if (mysql_required && (GetServerType() != DBServerTypes.MYSQL))
@@ -224,9 +263,16 @@ namespace WetLib
         /// <returns>Tabella restituita</returns>
         public DataTable ExecCustomQuery(string query)
         {
-            OdbcDataAdapter da = new OdbcDataAdapter(query, conn);
             DataTable dt = new DataTable();
-            da.Fill(dt);
+
+            using (OdbcCommand cmd = new OdbcCommand(query, conn))
+            {
+                cmd.CommandTimeout = 360;   // 6 minuti
+                using (OdbcDataAdapter da = new OdbcDataAdapter(cmd))
+                {                    
+                    da.Fill(dt);
+                }
+            }
 
             return dt;
         }
@@ -506,6 +552,22 @@ namespace WetLib
                 key_name = Convert.ToString(dt.Rows[0]["Column_name"]);
 
             return key_name;
+        }
+
+        /// <summary>
+        /// Ritorna il tipo di provider
+        /// </summary>
+        /// <returns></returns>
+        public ProviderType GetProvider()
+        {
+            ProviderType provider;
+
+            if (conn.ConnectionString.ToLower().Contains("archestra"))
+                provider = ProviderType.ARCHESTRA_SQL;
+            else
+                provider = ProviderType.GENERIC_MYSQL;
+
+            return provider;
         }
 
         #endregion
