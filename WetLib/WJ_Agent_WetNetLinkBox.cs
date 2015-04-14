@@ -96,6 +96,7 @@ namespace WetLib
             // Carico la configurazione
             config = cfg.GetWJ_Agent_WetNetLinkBox_Config();
             // Carico i parametri della configurazione
+            job_sleep_time = config.execution_interval_minutes * 60 * 1000;
             wetnet_dsn = cfg.GetWetDBDSN();
             wet_ftp = new WetFTP(config.ftp_server_name, config.ftp_server_port,
                 config.use_ssl, config.is_passive_connection,

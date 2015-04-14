@@ -96,6 +96,7 @@ namespace WetLib
             // Carico la configurazione
             config = cfg.GetWJ_Agent_Primayer_Config();
             // Carico i parametri della configurazione
+            job_sleep_time = config.execution_interval_minutes * 60 * 1000;
             wetnet_dsn = cfg.GetWetDBDSN();
             wet_ftp = new WetFTP(config.ftp_server_name, config.ftp_server_port,
                 config.use_ssl, config.is_passive_connection,
@@ -170,6 +171,10 @@ namespace WetLib
                         wet_db.TableInsert(file_dt, "primayer_data");
                         // Aggiorno il campo dell'ultimo file processato
                         wet_db.ExecCustomCommand("UPDATE primayer_identities SET `last_processed_filename` = '" + file + "' WHERE `primayer_name` = '" + device_name + "'");
+                        // Creo la cartella di appoggio per i files elaborati (nel caso non esistesse)
+                        //wet_ftp.CreateFolder(folder, "processed");
+                        // Sposto il file processato
+                        //wet_ftp.MoveFile(file, folder, file.ToLower().Replace(".csv", ".old"), folder + "/processed/");
                     }
                 }
             }

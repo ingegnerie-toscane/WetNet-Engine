@@ -324,6 +324,11 @@ namespace WetLib
             public bool enabled;
 
             /// <summary>
+            /// Minuti di intervallo fra esecuzioni consecutive del job
+            /// </summary>
+            public int execution_interval_minutes;
+
+            /// <summary>
             /// Nome host o indirizzo IP del server FTP
             /// </summary>
             public string ftp_server_name;
@@ -369,6 +374,11 @@ namespace WetLib
             /// Stato di abilitazione dell'agente
             /// </summary>
             public bool enabled;
+
+            /// <summary>
+            /// Minuti di intervallo fra esecuzioni consecutive del job
+            /// </summary>
+            public int execution_interval_minutes;
 
             /// <summary>
             /// Nome host o indirizzo IP del server FTP
@@ -558,6 +568,7 @@ namespace WetLib
             WJ_Agent_WLB_Config_Struct cfg;
 
             cfg.enabled = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Attribute("enabled").Value);
+            cfg.execution_interval_minutes = Convert.ToInt32(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Attribute("execution_interval_minutes").Value);
             cfg.ftp_server_name = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Element("FTPServerName").Value;
             cfg.ftp_server_port = Convert.ToInt32(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Element("FTPServerPort").Value);
             cfg.use_ssl = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Element("FTPUseSSL").Value);
@@ -578,6 +589,7 @@ namespace WetLib
             WJ_Agent_Primayer_Config_Struct cfg;
 
             cfg.enabled = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Attribute("enabled").Value);
+            cfg.execution_interval_minutes = Convert.ToInt32(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Attribute("execution_interval_minutes").Value);
             cfg.ftp_server_name = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Element("FTPServerName").Value;
             cfg.ftp_server_port = Convert.ToInt32(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Element("FTPServerPort").Value);
             cfg.use_ssl = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Element("FTPUseSSL").Value);

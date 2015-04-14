@@ -357,10 +357,17 @@ namespace WetLib
                         " AND vValue IS NOT NULL " +
                         "AND (Quality = 0 OR Quality = 1) " +
                         "AND (QualityDetail = 192 OR QualityDetail = 202 OR QualityDetail = 64) " +
+                        //"AND wwResolution = " + ((int)(config.interpolation_time * 60 * 1000)).ToString() + " " +
+                        //"AND wwRetrievalMode = 'Cyclic' " +
                         "AND wwRetrievalMode = 'Full' " +
                         "AND DateTime > CONVERT(datetime, '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', 120) " +
                         "AND DateTime <= CONVERT(datetime, '" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', 120) ORDER BY " +
                         measure_coord.timestamp_column + (order == WetDBConn.OrderTypes.ASC ? " ASC" : " DESC");
+                    break;
+
+                case WetDBConn.ProviderType.IFIX_SQL:
+                    query = string.Empty;   // Dummy
+                    // TODO
                     break;
 
                 case WetDBConn.ProviderType.GENERIC_MYSQL:

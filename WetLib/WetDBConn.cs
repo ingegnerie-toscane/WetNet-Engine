@@ -160,7 +160,12 @@ namespace WetLib
             /// <summary>
             /// SQL Server con Archestra
             /// </summary>
-            ARCHESTRA_SQL = 1
+            ARCHESTRA_SQL = 1,
+
+            /// <summary>
+            /// SQL Server con IFix
+            /// </summary>
+            IFIX_SQL = 2
         }
 
         #endregion
@@ -564,6 +569,8 @@ namespace WetLib
 
             if (conn.ConnectionString.ToLower().Contains("archestra"))
                 provider = ProviderType.ARCHESTRA_SQL;
+            else if (conn.ConnectionString.ToLower().Contains("ifix"))
+                provider = ProviderType.IFIX_SQL;
             else
                 provider = ProviderType.GENERIC_MYSQL;
 

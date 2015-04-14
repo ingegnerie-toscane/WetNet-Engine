@@ -359,12 +359,13 @@ namespace WetLib
                                 {
                                     vals[ii] = vals[ii].Replace(",", ".");
                                     if (vals[ii] == string.Empty)
-                                        vals[ii] = "0.0";
-                                    bool res = double.TryParse(vals[ii], NumberStyles.Any, CultureInfo.InvariantCulture, out tmp);
-                                    if (res == false)
-                                        continue;
-                                    if (double.IsInfinity(tmp) || double.IsNaN(tmp) || double.IsNegativeInfinity(tmp) || double.IsPositiveInfinity(tmp))
                                         tmp = 0.0d;
+                                    else
+                                    {
+                                        double.TryParse(vals[ii], NumberStyles.Any, CultureInfo.InvariantCulture, out tmp);
+                                        if (double.IsInfinity(tmp) || double.IsNaN(tmp) || double.IsNegativeInfinity(tmp) || double.IsPositiveInfinity(tmp))
+                                            tmp = double.NaN;
+                                    }
                                 }
                                 else
                                     tmp = 0.0d;
@@ -378,6 +379,62 @@ namespace WetLib
             }
 
             return dt;
+        }
+
+        /// <summary>
+        /// Crea la cartella "folder" a partire da "base_folder"
+        /// </summary>
+        /// <param name="base_folder">Directory di base</param>
+        /// <param name="folder">Nuova sottodirectory</param>
+        /// <returns>xxx</returns>
+        public string CreateFolder(string base_folder, string folder)
+        {          
+            // Provo a creare la cartella
+            if (base_folder.Last() != '/')
+                base_folder += '/';
+            string resp = FTPAPI_GetStringQuery(WebRequestMethods.Ftp.MakeDirectory, base_folder + folder);
+
+            return resp;
+        }
+
+        /// <summary>
+        /// Sposta un file
+        /// </summary>
+        /// <param name="source_file_name"></param>
+        /// <param name="source_path"></param>
+        /// <param name="dest_file_name"></param>
+        /// <param name="dest_path"></param>
+        /// <returns></returns>
+        public string MoveFile(string source_file_name, string source_path, string dest_file_name, string dest_path)
+        {
+            // Controllo le stringhe dei percorsi
+            if (source_path.Last() != '/')
+                source_path += '/';
+            if (dest_path.Last() != '/')
+                dest_path += '/';
+            // Aggiungo il nome del file ai percorsi
+            source_path += source_file_name;
+            dest_path += dest_file_name;
+            // Eseguo il download del file
+            FtpWebRequest ftp = FTPAPI_Initialize(source_file_name);
+            ftp.Method = WebRequestMethods.Ftp.DownloadFile;
+            byte[] file_buffer;
+            using (MemoryStream ms = new MemoryStream())
+            {
+                ftp.GetResponse().GetResponseStream().CopyTo(ms);
+                file_buffer = ms.ToArray();
+            }
+            // Eseguo l'UpLoad del file nella nuova destinazione
+            ftp = FTPAPI_Initialize(dest_file_name);
+            ftp.Method = WebRequestMethods.Ftp.UploadFile;
+            using (MemoryStream ms = new MemoryStream(file_buffer))
+            {
+                ms.CopyTo(ftp.GetRequestStream());
+            }
+            // Elimino il file sorgente
+            string resp = FTPAPI_GetStringQuery(WebRequestMethods.Ftp.DeleteFile, source_file_name);
+
+            return resp;
         }
 
         #endregion

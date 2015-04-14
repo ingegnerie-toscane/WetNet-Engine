@@ -350,6 +350,8 @@ namespace WetLib
                         double not_household_night_use = Convert.ToDouble(district["not_household_night_use"]);
                         // Controllo il campo di reset
                         int reset_all_data = Convert.ToInt32(district["reset_all_data"]);
+                        if ((reset_all_data >= id_district) && (reset_all_data < (id_district + 2)))
+                            continue;
                         // Leggo l'ultimo giorno scritto sulle statistiche
                         DateTime first_day = DateTime.MinValue;
                         DataTable first_day_table = wet_db.ExecCustomQuery("SELECT * FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `day` DESC LIMIT 1");
@@ -728,7 +730,7 @@ namespace WetLib
                                     continue;
                                 // Calcolo la correlazione con l'indice di Bravais-Pearson
                                 DataTable dt = db.ExecCustomQuery(
-                                    "SELECT ((AVG(dt.mul) - (AVG(dt.v1) * AVG(dt.v2))) / (STDDEV_POP(dt.v1) * STDDEV_POP(dt.v2))) AS pearson_correlation " +
+                                    "SELECT IFNULL(((AVG(dt.mul) - (AVG(dt.v1) * AVG(dt.v2))) / (STDDEV_POP(dt.v1) * STDDEV_POP(dt.v2))), 0) AS pearson_correlation " +
                                     "FROM " +
                                     "(" +
                                     "   SELECT t1.`timestamp` AS ts, t1.`value` AS v1, t2.`value` AS v2, (t1.`value` * t2.`value`) AS mul" +
