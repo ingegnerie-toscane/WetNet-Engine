@@ -170,12 +170,9 @@ namespace WetLib
 
         #endregion
 
-        #region Istanze
+        #region Variabili globali
 
-        /// <summary>
-        /// Connessione al database ODBC
-        /// </summary>
-        OdbcConnection conn;
+        readonly string connection_string;
 
         #endregion
 
@@ -190,14 +187,11 @@ namespace WetLib
         /// <param name="mysql_required">Indica se il database deve essere MySQL</param>
         public WetDBConn(string odbc_dsn, string username, string password, bool mysql_required)
         {
-            string connection_string = "DSN=" + odbc_dsn;
+            connection_string = "DSN=" + odbc_dsn;
             if (username != null)
                 connection_string += "; Uid=" + username;
             if (password != null)
                 connection_string += "; Pwd=" + password;
-            // Istanzio la connessione
-            conn = new OdbcConnection(connection_string);
-            conn.Open();
             // Controllo che faccia riferimento ad un database MySQL
             if (mysql_required && (GetServerType() != DBServerTypes.MYSQL))
                 throw new Exception("MySQL ODBC Driver requested!");
@@ -253,10 +247,13 @@ namespace WetLib
         /// <param name="table_name">Nome della tabella</param>
         /// <returns>Dataset restituito</returns>
         public DataSet GetDataset(string table_name)
-        {           
-            OdbcDataAdapter da = new OdbcDataAdapter("SELECT * FROM " + table_name, conn);
+        {
             DataSet ds = new DataSet();
-            da.Fill(ds);
+
+            using (OdbcDataAdapter da = new OdbcDataAdapter("SELECT * FROM " + table_name, connection_string))
+            {
+                da.Fill(ds);
+            }
 
             return ds;
         }
@@ -270,13 +267,18 @@ namespace WetLib
         {
             DataTable dt = new DataTable();
 
-            using (OdbcCommand cmd = new OdbcCommand(query, conn))
+            using (OdbcConnection conn = new OdbcConnection(connection_string))
             {
-                cmd.CommandTimeout = 360;   // 6 minuti
-                using (OdbcDataAdapter da = new OdbcDataAdapter(cmd))
-                {                    
-                    da.Fill(dt);
+                conn.Open();
+                using (OdbcCommand cmd = new OdbcCommand(query, conn))
+                {
+                    cmd.CommandTimeout = 360;   // 6 minuti
+                    using (OdbcDataAdapter da = new OdbcDataAdapter(cmd))
+                    {
+                        da.Fill(dt);
+                    }
                 }
+                conn.Close();
             }
 
             return dt;
@@ -289,8 +291,19 @@ namespace WetLib
         /// <returns>Numero di records interessati</returns>
         public int ExecCustomCommand(string command)
         {
-            OdbcCommand cmd = new OdbcCommand(command, conn);
-            return cmd.ExecuteNonQuery();
+            int ret = 0;
+
+            using (OdbcConnection conn = new OdbcConnection(connection_string))
+            {
+                conn.Open();
+                using (OdbcCommand cmd = new OdbcCommand(command, conn))
+                {
+                    ret = cmd.ExecuteNonQuery();
+                }
+                conn.Close();
+            }
+
+            return ret;
         }
 
         /// <summary>
@@ -421,8 +434,9 @@ namespace WetLib
                     }
 
                     // Eseguo il comando
-                    OdbcCommand sql_cmd = new OdbcCommand(cmd, conn);
-                    insert_count += sql_cmd.ExecuteNonQuery();
+                    insert_count += ExecCustomCommand(cmd);
+
+                    // passo il controllo al S.O.
                     Thread.Sleep(100);
                 }            
             }
@@ -465,7 +479,13 @@ namespace WetLib
             switch (GetServerType())
             {
                 case DBServerTypes.MYSQL:
-                    DataTable dt = ExecCustomQuery("SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = '" + conn.Database + "' AND TABLE_NAME = '" + table_name + "' AND COLUMN_NAME = '" + foreign_key + "' AND REFERENCED_COLUMN_NAME IS NOT NULL");
+                    DataTable dt = new DataTable();
+                    using (OdbcConnection conn = new OdbcConnection(connection_string))
+                    {
+                        conn.Open();
+                        dt = ExecCustomQuery("SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = '" + conn.Database + "' AND TABLE_NAME = '" + table_name + "' AND COLUMN_NAME = '" + foreign_key + "' AND REFERENCED_COLUMN_NAME IS NOT NULL");
+                        conn.Close();
+                    }
                     if (dt.Rows.Count > 0)
                     {
                         source_table_name = Convert.ToString(dt.Rows[0][3]);
@@ -521,13 +541,18 @@ namespace WetLib
         {
             DBServerTypes type;
 
-            if (conn.Driver.ToLower().Contains("myodbc"))
+            using (OdbcConnection conn = new OdbcConnection(connection_string))
             {
-                // MySQL
-                type = DBServerTypes.MYSQL;
+                conn.Open();
+                if (conn.Driver.ToLower().Contains("myodbc"))
+                {
+                    // MySQL
+                    type = DBServerTypes.MYSQL;
+                }
+                else
+                    type = DBServerTypes.UNKNOWN;
+                conn.Close();
             }
-            else
-                type = DBServerTypes.UNKNOWN;
 
             return type;
         }
@@ -567,9 +592,9 @@ namespace WetLib
         {
             ProviderType provider;
 
-            if (conn.ConnectionString.ToLower().Contains("archestra"))
+            if (connection_string.ToLower().Contains("archestra"))
                 provider = ProviderType.ARCHESTRA_SQL;
-            else if (conn.ConnectionString.ToLower().Contains("ifix"))
+            else if (connection_string.ToLower().Contains("ifix"))
                 provider = ProviderType.IFIX_SQL;
             else
                 provider = ProviderType.GENERIC_MYSQL;

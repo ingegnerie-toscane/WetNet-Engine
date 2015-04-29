@@ -430,7 +430,7 @@ namespace WetLib
                                 Event ev_last = ReadLastEvent(id_district);
                                 if (bands_autoupdate)
                                 {
-                                    if (ev_last.type != EventTypes.NO_EVENT)
+                                    if (ev_last.type != EventTypes.POSSIBLE_GAIN)
                                     {
                                         // L'evento è valido, controllo la data
                                         if ((DateTime.Now.Date - ev_last.day).Days < last_good_samples)
@@ -695,7 +695,7 @@ namespace WetLib
                                 Event ev_last = ReadLastEvent(id_district);
                                 if (bands_autoupdate)
                                 {
-                                    if (ev_last.type != EventTypes.NO_EVENT)
+                                    if (ev_last.type != EventTypes.POSSIBLE_GAIN)
                                     {
                                         // L'evento è valido, controllo la data
                                         if ((DateTime.Now.Date - ev_last.day).Days < last_good_samples)

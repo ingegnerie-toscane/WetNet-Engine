@@ -48,7 +48,7 @@ namespace WetLib
         {
             double[] variance = new double[values.Length];
             double avg_variance = 0.0d;
-
+            
             if (values.Length < 2)
                 throw new Exception("At least two values is required!");
 
