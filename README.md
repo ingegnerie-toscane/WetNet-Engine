@@ -1,6 +1,6 @@
 WetSvc - WetNet Service
 =======================
-License: see *LICENSE.txt *
+License: see *LICENSE.txt*
 
 
 ##### Version history
