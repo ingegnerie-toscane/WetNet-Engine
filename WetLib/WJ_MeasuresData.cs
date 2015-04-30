@@ -366,8 +366,15 @@ namespace WetLib
                     break;
 
                 case WetDBConn.ProviderType.IFIX_SQL:
-                    query = string.Empty;   // Dummy
-                    // TODO
+                    query = "SELECT ";
+                    if (num_records > 0)
+                        query += "TOP " + num_records.ToString() + " ";
+                    query += "* FROM OPENQUERY(IHIST,'SELECT timestamp AS " + measure_coord.timestamp_column +
+                        ", value AS " + measure_coord.value_column + " FROM " + measure_coord.table_name +
+                        " WHERE Tagname = " + measure_coord.value_column +
+                        " AND quality = 100 AND timestamp > ''" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                        "'' AND timestamp <= ''" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'' AND samplingmode = LAB ORDER BY " +
+                        measure_coord.timestamp_column + (order == WetDBConn.OrderTypes.ASC ? " ASC" : " DESC") + "')";
                     break;
 
                 case WetDBConn.ProviderType.GENERIC_MYSQL:
@@ -445,7 +452,10 @@ namespace WetLib
             {
                 DataTable dt = wet_db.ExecCustomQuery("SELECT MAX(`timestamp`) FROM data_measures WHERE `measures_id_measures` = " + id_measure.ToString());
                 if (dt.Rows.Count == 1)
-                    ret = Convert.ToDateTime(dt.Rows[0][0]);
+                {
+                    if(dt.Rows[0][0] != DBNull.Value)
+                        ret = Convert.ToDateTime(dt.Rows[0][0]);
+                }
             }
             catch (Exception ex)
             {
