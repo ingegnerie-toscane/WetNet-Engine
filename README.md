@@ -1,6 +1,6 @@
-# WetSvc - WetNet Service
+# WetSvc - WetNet Service #
 
-## Version history
+## Version history ##
 ---------------
 
 * v1.4.2
