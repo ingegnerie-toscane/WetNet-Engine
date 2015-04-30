@@ -1,7 +1,7 @@
 # WetSvc - WetNet Service #
 
 ## Version history ##
----------------
+---------------------
 
 * v1.4.2
   - Fixed bug using OdbcConnection IDisposable interface
