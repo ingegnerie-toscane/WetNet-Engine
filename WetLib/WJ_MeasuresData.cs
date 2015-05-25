@@ -204,8 +204,49 @@ namespace WetLib
                     // Controllo se ci sono campioni da acquisire
                     if (last_dest < last_source)
                     {
-                        // Acquisisco tutti i campioni da scrivere
+                        // Acquisisco tutti i campioni da scrivere                        
                         DataTable samples = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, last_dest, DateTime.Now, WetDBConn.OrderTypes.ASC, MAX_RECORDS_IN_QUERY));
+                        // Gestione dei contatori volumetrici
+                        if (mtype == MeasureTypes.COUNTER)
+                        {
+                            // Acquisisco il campione precedente al primo della tabella samples
+                            DataTable cnt_tbl = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, WetDBConn.START_DATE, last_dest.Subtract(new TimeSpan(0, 0, 0, 1)), WetDBConn.OrderTypes.DESC, 1));
+                            // Lo inserisco nella tabella samples
+                            if (cnt_tbl.Rows.Count > 0)
+                            {
+                                samples.ImportRow(cnt_tbl.Rows[0]);
+                                DataView dv = samples.DefaultView;
+                                dv.Sort = "[" + cnt_tbl.Columns[0].ColumnName + "] ASC";
+                                samples = dv.ToTable();
+                            }
+                            // Creo una tabella di appoggio temporanea
+                            DataTable cnt_tbl_q = samples.Clone();
+                            // Ciclo per tutti i campioni di samples
+                            DateTime now_dt, prec_dt;
+                            double now_v, prec_v, liters, flow, seconds;
+                            for (int ii = 0; ii < samples.Rows.Count; ii++)
+                            {
+                                if (ii == 0)
+                                    continue;   // Salta il primo record
+
+                                // Acquisisco i valori attuali e precedenti
+                                prec_dt = Convert.ToDateTime(samples.Rows[ii - 1][0]);
+                                now_dt = Convert.ToDateTime(samples.Rows[ii][0]);
+                                prec_v = Convert.ToDouble(samples.Rows[ii - 1][1]);
+                                now_v = Convert.ToDouble(samples.Rows[ii][1]);
+                                // Calcolo la differenza in litri
+                                seconds = (now_dt - prec_dt).TotalSeconds;
+                                liters = (now_v * 1000) - (prec_v * 1000);
+                                // Calcolo la portata
+                                flow = liters / seconds;
+                                // Popolo la tabella
+                                cnt_tbl_q.Rows.Add(now_dt, flow);
+                            }
+                            // Assegno la tabella temporanea a 'samples'
+                            samples.Clear();
+                            samples = cnt_tbl_q.Copy();
+                        }
+
                         DataTable dest = new DataTable();
                         dest.Columns.Add("timestamp", typeof(DateTime));
                         dest.Columns.Add("reliable", typeof(bool));
@@ -375,6 +416,16 @@ namespace WetLib
                         " AND quality = 100 AND timestamp > ''" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
                         "'' AND timestamp <= ''" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'' AND samplingmode = LAB ORDER BY " +
                         measure_coord.timestamp_column + (order == WetDBConn.OrderTypes.ASC ? " ASC" : " DESC") + "')";
+                    break;
+
+                case WetDBConn.ProviderType.EXCEL:
+                    query = "SELECT ";
+                    if (num_records > 0)
+                        query += "TOP " + num_records.ToString() + " ";
+                    query += measure_coord.timestamp_column + ", " + measure_coord.value_column + " FROM " + measure_coord.table_name +
+                        " WHERE (" + measure_coord.timestamp_column + " > #" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                                "# AND " + measure_coord.timestamp_column + " <= #" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "#)" +
+                        " ORDER BY " + measure_coord.timestamp_column + " " + (order == WetDBConn.OrderTypes.ASC ? "ASC" : "DESC");
                     break;
 
                 case WetDBConn.ProviderType.GENERIC_MYSQL:

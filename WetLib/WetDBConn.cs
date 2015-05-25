@@ -60,6 +60,11 @@ namespace WetLib
         /// </summary>
         public const string MYSQL_TIME_FORMAT = @"hh\:mm\:ss";
 
+        /// <summary>
+        /// Data di partenza
+        /// </summary>
+        public static readonly DateTime START_DATE = new DateTime(2000, 1, 1, 0, 0, 0);
+
         #endregion
 
         #region Enumerazioni
@@ -165,7 +170,12 @@ namespace WetLib
             /// <summary>
             /// SQL Server con IFix
             /// </summary>
-            IFIX_SQL = 2
+            IFIX_SQL = 2,
+
+            /// <summary>
+            /// Microsoft Excel
+            /// </summary>
+            EXCEL = 3
         }
 
         #endregion
@@ -596,6 +606,8 @@ namespace WetLib
                 provider = ProviderType.ARCHESTRA_SQL;
             else if (connection_string.ToLower().Contains("ifix"))
                 provider = ProviderType.IFIX_SQL;
+            else if (connection_string.ToLower().Contains("excel"))
+                provider = ProviderType.EXCEL;
             else
                 provider = ProviderType.GENERIC_MYSQL;
 
