@@ -57,7 +57,7 @@ namespace WetSvc
             // 
             // WetSvc
             // 
-            this.ServiceName = "Service1";
+            this.ServiceName = "WetSvc";
 
         }
 
