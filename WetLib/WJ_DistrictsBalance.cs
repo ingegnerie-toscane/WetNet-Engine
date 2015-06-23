@@ -122,7 +122,7 @@ namespace WetLib
                     xchange.Columns.Add("minus", typeof(double));
                     xchange.PrimaryKey = new DataColumn[] { xchange.Columns["timestamp"] };                                        
                     // Acquisisco tutte le misure configurate per il distretto, eccetto le pressioni
-                    DataTable measures = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND measures.type = 0");
+                    DataTable measures = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND ((measures.type = 0) OR (measures.type = 2))");
                     measures.PrimaryKey = new DataColumn[] { measures.Columns["measures_id_measures"] };
                     // Acquisisco il timestamp dell'ultimo giorno campionato
                     DataTable tmp = wet_db.ExecCustomQuery("SELECT `timestamp` FROM data_districts WHERE `districts_id_districts` = " + id_district + " ORDER BY `timestamp` DESC LIMIT 1");
