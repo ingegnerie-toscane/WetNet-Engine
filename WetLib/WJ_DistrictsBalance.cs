@@ -86,6 +86,9 @@ namespace WetLib
         /// </summary>
         protected override void DoJob()
         {
+            // Controllo cold_start_conter
+            if (WetEngine.cold_start_counter < 1)
+                return;
             // Acquisisco tutti i distretti configurati
             DataTable districts = wet_db.ExecCustomQuery("SELECT * FROM districts");
             // Ciclo per tutti i distretti
@@ -284,7 +287,10 @@ namespace WetLib
                 if (cancellation_token_source.IsCancellationRequested)
                     return;
                 Sleep();
-            }                           
+            }
+            // Aggiorno cold_start_counter
+            if (WetEngine.cold_start_counter == 1)
+                WetEngine.cold_start_counter++;                           
         }
 
         #endregion

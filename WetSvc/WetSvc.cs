@@ -69,13 +69,11 @@ namespace WetSvc
 
         #region Funzioni si start e stop del servizio
 
-#if DEBUG
-
         /// <summary>
         /// Funzione di avvio per debug del servizio
         /// </summary>
         /// <param name="args">Argomenti di avvio</param>
-        public void StartDebug(string[] args)
+        internal void StartDebug(string[] args)
         {
             OnStart(args);
         }
@@ -83,12 +81,10 @@ namespace WetSvc
         /// <summary>
         /// Funzione di arresto per debug del servizio
         /// </summary>
-        public void StopDebug()
+        internal void StopDebug()
         {
             OnStop();
         }
-
-#endif
 
         /// <summary>
         /// Evento di avvio del servizio

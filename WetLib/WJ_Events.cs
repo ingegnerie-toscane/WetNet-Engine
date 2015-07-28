@@ -215,6 +215,9 @@ namespace WetLib
                 // Controllo che sia passata l'ora di verifica
                 if (DateTime.Now.Hour < CHECK_HOUR)
                     return;
+                // Controllo cold_start_counter
+                if (WetEngine.cold_start_counter < 3)
+                    return;
                 // Acquisisco tutti i distretti configurati
                 DataTable districts = wet_db.ExecCustomQuery("SELECT * FROM districts");
                 // Ciclo per tutti i distretti
@@ -951,6 +954,9 @@ namespace WetLib
             {
                 WetDebug.GestException(ex);
             }
+            // Aggiorno cold_start_counter
+            if (WetEngine.cold_start_counter == 3)
+                WetEngine.cold_start_counter++;
         }
 
         #endregion

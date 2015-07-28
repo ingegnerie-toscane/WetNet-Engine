@@ -30,6 +30,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Reflection;
+using System.IO;
 
 namespace WetLib
 {
@@ -498,7 +500,7 @@ namespace WetLib
         /// </summary>
         public WetConfig()
         {
-            root = XElement.Load(CONFIG_FILE_NAME);
+            root = XElement.Load(Directory.GetParent(Assembly.GetCallingAssembly().Location).FullName + @"\" + CONFIG_FILE_NAME);
         }
 
         #endregion
@@ -540,7 +542,7 @@ namespace WetLib
         /// <returns>Tempo di interpolazione espresso in minuti</returns>
         public static int GetInterpolationTimeMinutes()
         {
-            XElement root = XElement.Load(CONFIG_FILE_NAME);
+            XElement root = XElement.Load(Directory.GetParent(Assembly.GetCallingAssembly().Location).FullName + @"\" + CONFIG_FILE_NAME);
 
             return Convert.ToInt32(root.Element("InterpolationTimeMinutes").Value);
         }

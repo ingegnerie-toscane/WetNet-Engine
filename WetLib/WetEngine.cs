@@ -90,6 +90,15 @@ namespace WetLib
 
         #endregion
 
+        #region Variabili globali
+
+        /// <summary>
+        /// Contatore di attività eseguite all'avvio
+        /// </summary>
+        public static int cold_start_counter = 0;
+
+        #endregion
+
         #region Costruttore
 
         /// <summary>

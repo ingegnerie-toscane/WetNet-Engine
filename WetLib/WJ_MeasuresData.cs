@@ -208,7 +208,7 @@ namespace WetLib
                         DataTable samples = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, last_dest, DateTime.Now, WetDBConn.OrderTypes.ASC, MAX_RECORDS_IN_QUERY));
                         // Gestione dei contatori volumetrici
                         if (mtype == MeasureTypes.COUNTER)
-                        {
+                        {                            
                             // Acquisisco il campione precedente al primo della tabella samples
                             DataTable cnt_tbl = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, WetDBConn.START_DATE, last_dest.Subtract(new TimeSpan(0, 0, 0, 1)), WetDBConn.OrderTypes.DESC, 1));
                             // Lo inserisco nella tabella samples
@@ -218,7 +218,7 @@ namespace WetLib
                                 DataView dv = samples.DefaultView;
                                 dv.Sort = "[" + cnt_tbl.Columns[0].ColumnName + "] ASC";
                                 samples = dv.ToTable();
-                            }
+                            }                                                                                   
                             // Creo una tabella di appoggio temporanea
                             DataTable cnt_tbl_q = samples.Clone();
                             // Ciclo per tutti i campioni di samples
@@ -279,6 +279,16 @@ namespace WetLib
                         }
                         samples.Rows.InsertAt(new_row, 0);
 
+                        // Interpolazione lineare
+                        Dictionary<DateTime, double> interpolated = WetMath.LinearInterpolation(interpolation_time, 
+                            WetMath.DataTable2Dictionary(samples, measure_coord.timestamp_column, measure_coord.value_column));
+
+                        // Riconversione in tabella dati
+                        for (int ii = 0; ii < interpolated.Count; ii++)
+                            dest.Rows.Add(interpolated.ElementAt(ii).Key, 1, interpolated.ElementAt(ii).Value, id_measure, id_odbc_dsn);
+
+                        /* Vecchio codice eliminato in data 2015-07-27
+
                         DateTime start = Convert.ToDateTime(samples.Rows[0][0]);
                         DateTime stop = start + interpolation_time;
                         for (int ii = 0, jj = 0; ii < samples.Rows.Count - 1; )
@@ -311,6 +321,8 @@ namespace WetLib
                             else
                                 ii++;
                         }
+
+                        */
 
                         /**********************************************************/
                         /*** FINE PROCEDURA DI INTERPOLAZIONE LINEARE DEI PUNTI ***/
@@ -359,6 +371,9 @@ namespace WetLib
                     return;
                 Sleep();
             }
+            // Aggiorno cold_start_counter
+            if (WetEngine.cold_start_counter == 0)
+                WetEngine.cold_start_counter++;
         }
 
         #endregion

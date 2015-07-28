@@ -43,6 +43,7 @@
   <ItemGroup>
     <Compile Include="WetDebug.cs" />
     <Compile Include="WetFTP.cs" />
+    <Compile Include="WetMath.cs" />
     <Compile Include="WetStatistics.cs" />
     <Compile Include="WetConfig.cs" />
     <Compile Include="WetDBConn.cs" />

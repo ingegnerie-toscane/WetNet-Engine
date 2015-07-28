@@ -32,32 +32,92 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.Reflection;
+using System.Configuration.Install;
 
 namespace WetSvc
 {
     static class Program
     {
+        #region Funzioni del modulo
+
         /// <summary>
-        /// Punto di ingresso principale dell'applicazione.
+        /// Procedura di autoinstallazione
         /// </summary>
-        static void Main()
+        static void Install()
         {
-#if DEBUG
-            WetSvc svc = new WetSvc();
-            svc.StartDebug(null);
-
-            Process prcs = Process.Start("cmd.exe", "/K TITLE WetSvc Debug Window");
-            prcs.WaitForExit();
-
-            svc.StopDebug();
-#else
-            ServiceBase[] ServicesToRun;
-            ServicesToRun = new ServiceBase[] 
-            { 
-                new WetSvc() 
-            };
-            ServiceBase.Run(ServicesToRun);
-#endif
+            try
+            {
+                string file_name = Assembly.GetExecutingAssembly().Location;
+                ManagedInstallerClass.InstallHelper(new string[] { file_name });              
+            }
+            catch
+            { }
         }
+
+        /// <summary>
+        /// Procedura di autodisinstallazione
+        /// </summary>
+        static void UnInstall()
+        {
+            try
+            {
+                string file_name = Assembly.GetExecutingAssembly().Location;
+                ManagedInstallerClass.InstallHelper(new string[] { @"/u", file_name });
+            }
+            catch
+            { }
+        }
+
+        #endregion
+
+        #region Punto di ingresso dell'applicazione
+
+        /// <summary>
+        /// Punto di ingresso dell'applicazione
+        /// </summary>
+        /// <param name="args">parametri da riga di comando</param>
+        static void Main(string[] args)
+        {
+            if (args.Length == 0)
+            {
+                ServiceBase[] ServicesToRun;
+                ServicesToRun = new ServiceBase[]
+                {
+                new WetSvc()
+                };
+                ServiceBase.Run(ServicesToRun);
+            }
+            else if (args.Length == 1)
+            {
+                string val = args[0].ToLower();
+
+                switch (val)
+                {
+                    case "/d":
+                    case "-d":
+                        WetSvc svc = new WetSvc();
+                        svc.StartDebug(null);
+
+                        Process prcs = Process.Start("cmd.exe", "/K TITLE WetSvc Debug Window");
+                        prcs.WaitForExit();
+
+                        svc.StopDebug();
+                        break;
+
+                    case "/i":
+                    case "-i":
+                        Install();
+                        break;
+
+                    case "/u":
+                    case "-u":
+                        UnInstall();
+                        break;
+                }
+            }
+        }
+
+        #endregion
     }
 }
