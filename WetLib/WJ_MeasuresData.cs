@@ -285,44 +285,7 @@ namespace WetLib
 
                         // Riconversione in tabella dati
                         for (int ii = 0; ii < interpolated.Count; ii++)
-                            dest.Rows.Add(interpolated.ElementAt(ii).Key, 1, interpolated.ElementAt(ii).Value, id_measure, id_odbc_dsn);
-
-                        /* Vecchio codice eliminato in data 2015-07-27
-
-                        DateTime start = Convert.ToDateTime(samples.Rows[0][0]);
-                        DateTime stop = start + interpolation_time;
-                        for (int ii = 0, jj = 0; ii < samples.Rows.Count - 1; )
-                        {
-                            if (Convert.ToDateTime(samples.Rows[ii][0]) >= stop)
-                            {
-                                bool is_reliable;
-                                // Interpolo
-                                double y0 = samples.Rows[jj][1] == DBNull.Value ? 0.0d : Convert.ToDouble(samples.Rows[jj][1]);
-                                double y1 = samples.Rows[ii][1] == DBNull.Value ? 0.0d : Convert.ToDouble(samples.Rows[ii][1]);
-                                double x0 = Convert.ToDouble(Convert.ToDateTime(samples.Rows[jj][0]).Ticks);
-                                double x1 = Convert.ToDouble(Convert.ToDateTime(samples.Rows[ii][0]).Ticks);
-                                double x = stop.Ticks;
-                                double y = (((y1 - y0) * (x - x0)) / (x1 - x0)) + y0;
-                                if (double.IsNaN(y))
-                                    y = 0;
-                                // Calcolo l'affidabilità
-                                if (stop.Date == DateTime.Now.Date)
-                                    is_reliable = reliable;
-                                else
-                                    is_reliable = true;
-                                // Aggiungo la riga
-                                dest.Rows.Add(stop, is_reliable, y, id_measure, id_odbc_dsn);
-                                // Aggiorno i contatori
-                                if ((Convert.ToDateTime(samples.Rows[ii][0]) - stop) <= interpolation_time)
-                                    jj = ii++;
-                                start = stop;
-                                stop = start + interpolation_time;
-                            }
-                            else
-                                ii++;
-                        }
-
-                        */
+                            dest.Rows.Add(interpolated.ElementAt(ii).Key, 1, interpolated.ElementAt(ii).Value, id_measure, id_odbc_dsn);                        
 
                         /**********************************************************/
                         /*** FINE PROCEDURA DI INTERPOLAZIONE LINEARE DEI PUNTI ***/

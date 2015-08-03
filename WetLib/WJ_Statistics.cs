@@ -335,7 +335,7 @@ namespace WetLib
                             continue;
                         // Controllo se ci sono delle pressioni che siano aggiornate
                         DataTable pressure = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND measures.type = 1");
-                        bool can_continue = true;
+                        bool pressure_statistics_presence = true;
                         foreach (DataRow pm in pressure.Rows)
                         {
                             // Acquisisco l'ID della misura di pressione
@@ -344,7 +344,7 @@ namespace WetLib
                             DataTable mnp_t = wet_db.ExecCustomQuery("SELECT min_night FROM measures_day_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " AND `day` = '" + DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0)).ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
                             if (mnp_t.Rows.Count == 0)
                             {
-                                can_continue = false;
+                                pressure_statistics_presence = false;
                                 break;
                             }
                             // Passo il controllo al S.O. per l'attesa
@@ -352,8 +352,6 @@ namespace WetLib
                                 return;
                             Sleep();
                         }
-                        if (!can_continue)
-                            continue;
                         // Controllo il numero di giorni da campionare
                         first_day = first_day.AddDays(1.0d);
                         DataTable days_table = wet_db.ExecCustomQuery("SELECT DISTINCT DATE(`timestamp`) AS `date` FROM data_districts WHERE `timestamp` > '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` < '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND districts_id_districts = " + id_district + " ORDER BY `date` ASC");
@@ -496,7 +494,7 @@ namespace WetLib
                             // Vettore con le medie delle pressioni minime notturne
                             List<double> ps_min_night = new List<double>();
                             // Ciclo per tutte le pressioni, se presenti
-                            if (pressure.Rows.Count > 0)
+                            if ((pressure.Rows.Count > 0) && pressure_statistics_presence)
                             {
                                 foreach (DataRow dr in pressure.Rows)
                                 {
