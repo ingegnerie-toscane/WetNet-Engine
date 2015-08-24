@@ -112,6 +112,9 @@ namespace WetLib
                     // Acquisisco i dati formattati
                     DateTime timestamp = serie.Rows[ii][timestamp_column] == DBNull.Value ? DateTime.MinValue : Convert.ToDateTime(serie.Rows[ii][timestamp_column]);
                     double value = serie.Rows[ii][value_column] == DBNull.Value ? 0.0d : Convert.ToDouble(serie.Rows[ii][value_column]);
+                    // Se la chiave esiste già la salto
+                    if (return_serie.ContainsKey(timestamp))
+                        continue;
                     // Li aggiungo al dizionario
                     return_serie.Add(timestamp, value);
                 }
