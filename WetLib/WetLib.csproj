@@ -9,15 +9,16 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>WetLib</RootNamespace>
     <AssemblyName>WetLib</AssemblyName>
-    <TargetFrameworkVersion>v4.5.1</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x64\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
@@ -26,7 +27,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
@@ -41,6 +42,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="WetDebug.cs" />
+    <Compile Include="WetFTP.cs" />
+    <Compile Include="WetMath.cs" />
     <Compile Include="WetStatistics.cs" />
     <Compile Include="WetConfig.cs" />
     <Compile Include="WetDBConn.cs" />
@@ -48,15 +51,17 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="WetJob.cs" />
     <Compile Include="WetUtility.cs" />
+    <Compile Include="WJ_Agent_Primayer.cs" />
+    <Compile Include="WJ_Agent_WetNetLinkBox.cs" />
     <Compile Include="WJ_DistrictsBalance.cs" />
     <Compile Include="WJ_Events.cs" />
     <Compile Include="WJ_MeasuresAlarms.cs" />
     <Compile Include="WJ_Statistics.cs" />
-    <Compile Include="WJ_LCFCopy.cs" />
+    <Compile Include="WJ_Agent_LCF.cs" />
     <Compile Include="WJ_MeasuresData.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="ReleaseNote.txt" />
+    <Content Include="LICENSE.txt" />
     <Content Include="WetEngine.config.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <SubType>Designer</SubType>

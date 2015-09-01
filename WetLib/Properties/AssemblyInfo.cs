@@ -1,4 +1,30 @@
-﻿using System.Reflection;
+﻿/****************************************************************************
+ * 
+ * WetLib - Common library for WetNet applications.
+ * Copyright 2013-2015 Ingegnerie Toscane S.r.l.
+ * 
+ * This file is part of WetNet application.
+ * 
+ * Licensed under the EUPL, Version 1.1 or – as soon they
+ * will be approved by the European Commission - subsequent
+ * versions of the EUPL (the "Licence");
+ * 
+ * You may not use this work except in compliance with the licence.
+ * You may obtain a copy of the Licence at:
+ * http://ec.europa.eu/idabc/eupl
+ * 
+ * Unless required by applicable law or agreed to in
+ * writing, software distributed under the Licence is
+ * distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied.
+ * 
+ * See the Licence for the specific language governing
+ * permissions and limitations under the Licence.
+ * 
+ ***************************************************************************/
+
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -32,5 +58,5 @@ using System.Runtime.InteropServices;
 // È possibile specificare tutti i valori oppure impostare valori predefiniti per i numeri relativi alla revisione e alla build 
 // utilizzando l'asterisco (*) come descritto di seguito:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.1.2.0")]
-[assembly: AssemblyFileVersion("1.1.2.0")]
+[assembly: AssemblyVersion("1.5.3.0")]
+[assembly: AssemblyFileVersion("1.5.3.0")]

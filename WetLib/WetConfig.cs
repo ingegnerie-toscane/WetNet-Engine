@@ -1,9 +1,37 @@
-﻿using System;
+﻿/****************************************************************************
+ * 
+ * WetLib - Common library for WetNet applications.
+ * Copyright 2013-2015 Ingegnerie Toscane S.r.l.
+ * 
+ * This file is part of WetNet application.
+ * 
+ * Licensed under the EUPL, Version 1.1 or – as soon they
+ * will be approved by the European Commission - subsequent
+ * versions of the EUPL (the "Licence");
+ * 
+ * You may not use this work except in compliance with the licence.
+ * You may obtain a copy of the Licence at:
+ * http://ec.europa.eu/idabc/eupl
+ * 
+ * Unless required by applicable law or agreed to in
+ * writing, software distributed under the Licence is
+ * distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied.
+ * 
+ * See the Licence for the specific language governing
+ * permissions and limitations under the Licence.
+ * 
+ ***************************************************************************/
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using System.Reflection;
+using System.IO;
 
 namespace WetLib
 {
@@ -274,12 +302,121 @@ namespace WetLib
         /// <summary>
         /// Struttura di configurazione per job di copia degli LCF
         /// </summary>
-        public struct WJ_LCFCopy_Config_Struct
+        public struct WJ_Agent_LCF_Config_Struct
         {
+            /// <summary>
+            /// Stato di abilitazione dell'agente
+            /// </summary>
+            public bool enabled;
+
             /// <summary>
             /// Nome del DSN con il database di origine degli LCF
             /// </summary>
             public string odbc_dsn;
+        }
+
+        /// <summary>
+        /// Struttura di configurazione per job di gestione dei WLB
+        /// </summary>
+        public struct WJ_Agent_WLB_Config_Struct
+        {
+            /// <summary>
+            /// Stato di abilitazione dell'agente
+            /// </summary>
+            public bool enabled;
+
+            /// <summary>
+            /// Minuti di intervallo fra esecuzioni consecutive del job
+            /// </summary>
+            public int execution_interval_minutes;
+
+            /// <summary>
+            /// Nome host o indirizzo IP del server FTP
+            /// </summary>
+            public string ftp_server_name;
+
+            /// <summary>
+            /// Porta TCP del server FTP
+            /// </summary>
+            /// <remarks>Tipicamente la 21</remarks>
+            public int ftp_server_port;
+
+            /// <summary>
+            /// Indica se il server supporta SSL
+            /// </summary>
+            public bool use_ssl;
+
+            /// <summary>
+            /// Indica se FTP deve usare la modalità passiva
+            /// </summary>
+            public bool is_passive_connection;
+
+            /// <summary>
+            /// Nome utente per la connessione
+            /// </summary>
+            public string username;
+
+            /// <summary>
+            /// Password per la connessione
+            /// </summary>
+            public string password;
+
+            /// <summary>
+            /// Cartella principale di archiviazione dei files
+            /// </summary>
+            public string folder;
+        }
+
+        /// <summary>
+        /// Struttura di configurazione per job di gestione dei WLB
+        /// </summary>
+        public struct WJ_Agent_Primayer_Config_Struct
+        {
+            /// <summary>
+            /// Stato di abilitazione dell'agente
+            /// </summary>
+            public bool enabled;
+
+            /// <summary>
+            /// Minuti di intervallo fra esecuzioni consecutive del job
+            /// </summary>
+            public int execution_interval_minutes;
+
+            /// <summary>
+            /// Nome host o indirizzo IP del server FTP
+            /// </summary>
+            public string ftp_server_name;
+
+            /// <summary>
+            /// Porta TCP del server FTP
+            /// </summary>
+            /// <remarks>Tipicamente la 21</remarks>
+            public int ftp_server_port;
+
+            /// <summary>
+            /// Indica se il server supporta SSL
+            /// </summary>
+            public bool use_ssl;
+
+            /// <summary>
+            /// Indica se FTP deve usare la modalità passiva
+            /// </summary>
+            public bool is_passive_connection;
+
+            /// <summary>
+            /// Nome utente per la connessione
+            /// </summary>
+            public string username;
+
+            /// <summary>
+            /// Password per la connessione
+            /// </summary>
+            public string password;
+
+            /// <summary>
+            /// Cartella principale di archiviazione dei files
+            /// </summary>
+            public string folder;
         }
 
         /// <summary>
@@ -363,7 +500,7 @@ namespace WetLib
         /// </summary>
         public WetConfig()
         {
-            root = XElement.Load(CONFIG_FILE_NAME);
+            root = XElement.Load(Directory.GetParent(Assembly.GetCallingAssembly().Location).FullName + @"\" + CONFIG_FILE_NAME);
         }
 
         #endregion
@@ -405,7 +542,7 @@ namespace WetLib
         /// <returns>Tempo di interpolazione espresso in minuti</returns>
         public static int GetInterpolationTimeMinutes()
         {
-            XElement root = XElement.Load(CONFIG_FILE_NAME);
+            XElement root = XElement.Load(Directory.GetParent(Assembly.GetCallingAssembly().Location).FullName + @"\" + CONFIG_FILE_NAME);
 
             return Convert.ToInt32(root.Element("InterpolationTimeMinutes").Value);
         }
@@ -414,11 +551,54 @@ namespace WetLib
         /// Restituisce la struttura con la configurazione per il job di copia degli LCF
         /// </summary>
         /// <returns>Struttura con la configurazione</returns>
-        public WJ_LCFCopy_Config_Struct GetWJ_LCFCopy_Config()
+        public WJ_Agent_LCF_Config_Struct GetWJ_Agent_LCF_Config()
         {
-            WJ_LCFCopy_Config_Struct cfg;
+            WJ_Agent_LCF_Config_Struct cfg;
 
-            cfg.odbc_dsn = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "LCFCopy").Value;
+            cfg.enabled = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_LCF").Attribute("enabled").Value);
+            cfg.odbc_dsn = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_LCF").Value;
+
+            return cfg;
+        }
+
+        /// <summary>
+        /// Restituisce la struttura con la configurazione per il job di gestione dei WLB
+        /// </summary>
+        /// <returns>Struttura con la configurazione</returns>
+        public WJ_Agent_WLB_Config_Struct GetWJ_Agent_WetNetLinkBox_Config()
+        {
+            WJ_Agent_WLB_Config_Struct cfg;
+
+            cfg.enabled = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Attribute("enabled").Value);
+            cfg.execution_interval_minutes = Convert.ToInt32(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Attribute("execution_interval_minutes").Value);
+            cfg.ftp_server_name = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Element("FTPServerName").Value;
+            cfg.ftp_server_port = Convert.ToInt32(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Element("FTPServerPort").Value);
+            cfg.use_ssl = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Element("FTPUseSSL").Value);
+            cfg.is_passive_connection = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Element("FTPPassiveMode").Value);
+            cfg.username = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Element("FTPUserName").Value;
+            cfg.password = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Element("FTPPassword").Value;
+            cfg.folder = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_WetNetLinkBox").Element("FTPFolder").Value;
+
+            return cfg;
+        }
+
+        /// <summary>
+        /// Restituisce la struttura con la configurazione per il job di gestione dei device Primayer
+        /// </summary>
+        /// <returns>Struttura con la configurazione</returns>
+        public WJ_Agent_Primayer_Config_Struct GetWJ_Agent_Primayer_Config()
+        {
+            WJ_Agent_Primayer_Config_Struct cfg;
+
+            cfg.enabled = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Attribute("enabled").Value);
+            cfg.execution_interval_minutes = Convert.ToInt32(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Attribute("execution_interval_minutes").Value);
+            cfg.ftp_server_name = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Element("FTPServerName").Value;
+            cfg.ftp_server_port = Convert.ToInt32(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Element("FTPServerPort").Value);
+            cfg.use_ssl = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Element("FTPUseSSL").Value);
+            cfg.is_passive_connection = Convert.ToBoolean(root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Element("FTPPassiveMode").Value);
+            cfg.username = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Element("FTPUserName").Value;
+            cfg.password = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Element("FTPPassword").Value;
+            cfg.folder = root.Element("Jobs").Elements().Single(x => x.Attribute("name").Value == "Agent_Primayer").Element("FTPFolder").Value;
 
             return cfg;
         }

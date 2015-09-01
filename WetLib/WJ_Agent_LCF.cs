@@ -1,4 +1,30 @@
-﻿using System;
+﻿/****************************************************************************
+ * 
+ * WetLib - Common library for WetNet applications.
+ * Copyright 2013-2015 Ingegnerie Toscane S.r.l.
+ * 
+ * This file is part of WetNet application.
+ * 
+ * Licensed under the EUPL, Version 1.1 or – as soon they
+ * will be approved by the European Commission - subsequent
+ * versions of the EUPL (the "Licence");
+ * 
+ * You may not use this work except in compliance with the licence.
+ * You may obtain a copy of the Licence at:
+ * http://ec.europa.eu/idabc/eupl
+ * 
+ * Unless required by applicable law or agreed to in
+ * writing, software distributed under the Licence is
+ * distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied.
+ * 
+ * See the Licence for the specific language governing
+ * permissions and limitations under the Licence.
+ * 
+ ***************************************************************************/
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,17 +36,8 @@ namespace WetLib
     /// <summary>
     /// Job per la copia dei dati degli LCF
     /// </summary>
-    sealed class WJ_LCFCopy : WetJob
+    sealed class WJ_Agent_LCF : WetJob
     {
-        #region Costanti
-
-        /// <summary>
-        /// Nome del job
-        /// </summary>
-        const string JOB_NAME = "WJ_LCFCopy";
-
-        #endregion
-
         #region Istanze
 
         /// <summary>
@@ -45,12 +62,17 @@ namespace WetLib
         /// <summary>
         /// DSN ODBC del database sorgente degli LCF
         /// </summary>
-        readonly string lcf_dsn;
+        string lcf_dsn;
 
         /// <summary>
         /// DSN ODBC del database WetNet
         /// </summary>
-        readonly string wetnet_dsn;
+        string wetnet_dsn;
+
+        /// <summary>
+        /// Configurazione
+        /// </summary>
+        WetConfig.WJ_Agent_LCF_Config_Struct config;
 
         #endregion
 
@@ -59,15 +81,12 @@ namespace WetLib
         /// <summary>
         /// Costruttore
         /// </summary>
-        public WJ_LCFCopy()
+        public WJ_Agent_LCF()
         {
             // Millisecondi di attesa fra le esecuzioni
             job_sleep_time = WetConfig.GetInterpolationTimeMinutes() * 60 * 1000;
             // Istanzio la configurazione
-            cfg = new WetConfig();
-            // Carico i parametri della configurazione
-            lcf_dsn = cfg.GetWJ_LCFCopy_Config().odbc_dsn;
-            wetnet_dsn = cfg.GetWetDBDSN();
+            cfg = new WetConfig();            
         }
 
         #endregion
@@ -79,9 +98,14 @@ namespace WetLib
         /// </summary>
         protected override void Load()
         {
+            // carico la configurazione
+            config = cfg.GetWJ_Agent_LCF_Config();
+            // Carico i parametri della configurazione
+            lcf_dsn = config.odbc_dsn;
+            wetnet_dsn = cfg.GetWetDBDSN();
             // Istanzio le connessioni ai database
-            lcf_db = new WetDBConn(lcf_dsn, false);
-            wet_db = new WetDBConn(wetnet_dsn, true);
+            lcf_db = new WetDBConn(lcf_dsn, null, null, false);
+            wet_db = new WetDBConn(wetnet_dsn, null, null, true);
         }
 
         /// <summary>
@@ -89,6 +113,9 @@ namespace WetLib
         /// </summary>
         protected override void DoJob()
         {
+            // Se il Job non è abilitato esco
+            if (!config.enabled)
+                return;
             // Acquisisco le tabelle degli LCF
             string[] lcf_tables = GetLCFTables();
             // Ciclo per tutte le tabelle

@@ -1,4 +1,30 @@
-﻿using System;
+﻿/****************************************************************************
+ * 
+ * WetLib - Common library for WetNet applications.
+ * Copyright 2013-2015 Ingegnerie Toscane S.r.l.
+ * 
+ * This file is part of WetNet application.
+ * 
+ * Licensed under the EUPL, Version 1.1 or – as soon they
+ * will be approved by the European Commission - subsequent
+ * versions of the EUPL (the "Licence");
+ * 
+ * You may not use this work except in compliance with the licence.
+ * You may obtain a copy of the Licence at:
+ * http://ec.europa.eu/idabc/eupl
+ * 
+ * Unless required by applicable law or agreed to in
+ * writing, software distributed under the Licence is
+ * distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied.
+ * 
+ * See the Licence for the specific language governing
+ * permissions and limitations under the Licence.
+ * 
+ ***************************************************************************/
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -52,7 +78,7 @@ namespace WetLib
         {
             // Istanzio la connessione al database wetnet
             WetConfig cfg = new WetConfig();
-            wet_db = new WetDBConn(cfg.GetWetDBDSN(), true);
+            wet_db = new WetDBConn(cfg.GetWetDBDSN(), null, null, true);
         }
 
         /// <summary>
@@ -60,6 +86,9 @@ namespace WetLib
         /// </summary>
         protected override void DoJob()
         {
+            // Controllo cold_start_conter
+            if (WetEngine.cold_start_counter < 1)
+                return;
             // Acquisisco tutti i distretti configurati
             DataTable districts = wet_db.ExecCustomQuery("SELECT * FROM districts");
             // Ciclo per tutti i distretti
@@ -74,7 +103,7 @@ namespace WetLib
                     // Controllo la necessità di ricreare i dati del distretto
                     int reset_all_data = Convert.ToInt32(district["reset_all_data"]);
                     if (reset_all_data == id_district)
-                        ResetAllData(id_district, timestamp);
+                        ResetAllData(id_district);
                     // Creo una tabella di bilancio di portata
                     DataTable balance = new DataTable();
                     balance.Columns.Add("timestamp", typeof(DateTime));
@@ -96,7 +125,7 @@ namespace WetLib
                     xchange.Columns.Add("minus", typeof(double));
                     xchange.PrimaryKey = new DataColumn[] { xchange.Columns["timestamp"] };                                        
                     // Acquisisco tutte le misure configurate per il distretto, eccetto le pressioni
-                    DataTable measures = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND measures.type = 0");
+                    DataTable measures = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND ((measures.type = 0) OR (measures.type = 2))");
                     measures.PrimaryKey = new DataColumn[] { measures.Columns["measures_id_measures"] };
                     // Acquisisco il timestamp dell'ultimo giorno campionato
                     DataTable tmp = wet_db.ExecCustomQuery("SELECT `timestamp` FROM data_districts WHERE `districts_id_districts` = " + id_district + " ORDER BY `timestamp` DESC LIMIT 1");
@@ -258,7 +287,10 @@ namespace WetLib
                 if (cancellation_token_source.IsCancellationRequested)
                     return;
                 Sleep();
-            }                           
+            }
+            // Aggiorno cold_start_counter
+            if (WetEngine.cold_start_counter == 1)
+                WetEngine.cold_start_counter++;                           
         }
 
         #endregion
@@ -270,7 +302,7 @@ namespace WetLib
         /// </summary>
         /// <param name="id_district">ID del distretto</param>
         /// <param name="start_date">Data di inzio</param>
-        void ResetAllData(int id_district, DateTime start_date)
+        void ResetAllData(int id_district)
         {
             try
             {
@@ -279,28 +311,19 @@ namespace WetLib
                     "districts_energy_profile WRITE, districts_energy_day_statistic WRITE, districts_statistic_profiles WRITE, " +
                     "districts_events WRITE, districts_day_statistic WRITE");
                 // Elimino i profili di consumo
-                wet_db.ExecCustomCommand("DELETE FROM data_districts WHERE districts_id_districts = " + id_district + " AND `timestamp` >= '" +
-                    start_date.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                wet_db.ExecCustomCommand("DELETE FROM data_districts WHERE districts_id_districts = " + id_district.ToString());
                 // Elimino lo storico delle bande
-                wet_db.ExecCustomCommand("DELETE FROM districts_bands_history WHERE districts_id_districts = " + id_district + " AND `timestamp` >= '" +
-                    start_date.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                wet_db.ExecCustomCommand("DELETE FROM districts_bands_history WHERE districts_id_districts = " + id_district.ToString());
                 // Elimino i profili energetici
-                wet_db.ExecCustomCommand("DELETE FROM districts_energy_profile WHERE districts_id_districts = " + id_district + " AND `timestamp` >= '" +
-                    start_date.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                wet_db.ExecCustomCommand("DELETE FROM districts_energy_profile WHERE districts_id_districts = " + id_district.ToString());
                 // Elimino le statistiche energetiche
-                wet_db.ExecCustomCommand("DELETE FROM districts_energy_day_statistic WHERE districts_id_districts = " + id_district + " AND `day` >= '" +
-                    start_date.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                wet_db.ExecCustomCommand("DELETE FROM districts_energy_day_statistic WHERE districts_id_districts = " + id_district.ToString());
                 // Elimino i profili statistici
-                wet_db.ExecCustomCommand("DELETE FROM districts_statistic_profiles WHERE districts_id_districts = " + id_district + " AND `timestamp` >= '" +
-                    start_date.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                wet_db.ExecCustomCommand("DELETE FROM districts_statistic_profiles WHERE districts_id_districts = " + id_district.ToString());
                 // Elimino gli eventi
-                wet_db.ExecCustomCommand("DELETE FROM districts_events WHERE districts_id_districts = " + id_district + " AND `day` >= '" +
-                    start_date.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                wet_db.ExecCustomCommand("DELETE FROM districts_events WHERE districts_id_districts = " + id_district.ToString());
                 // Elimino le statistiche
-                wet_db.ExecCustomCommand("DELETE FROM districts_day_statistic WHERE districts_id_districts = " + id_district + " AND `day` >= '" +
-                    start_date.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
-                // Tolgo il blocco
-                wet_db.ExecCustomCommand("UNLOCK TABLES");
+                wet_db.ExecCustomCommand("DELETE FROM districts_day_statistic WHERE districts_id_districts = " + id_district.ToString());
             }
             catch (Exception ex)
             {
@@ -308,6 +331,8 @@ namespace WetLib
             }
             finally
             {
+                // Tolgo il blocco
+                wet_db.ExecCustomCommand("UNLOCK TABLES");
                 // Aggiorno il campo di reset
                 wet_db.ExecCustomCommand("UPDATE districts SET `reset_all_data` = " + (id_district + 1).ToString() + " WHERE id_districts = " + id_district.ToString());
             }

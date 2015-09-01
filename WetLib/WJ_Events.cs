@@ -1,4 +1,30 @@
-﻿using System;
+﻿/****************************************************************************
+ * 
+ * WetLib - Common library for WetNet applications.
+ * Copyright 2013-2015 Ingegnerie Toscane S.r.l.
+ * 
+ * This file is part of WetNet application.
+ * 
+ * Licensed under the EUPL, Version 1.1 or – as soon they
+ * will be approved by the European Commission - subsequent
+ * versions of the EUPL (the "Licence");
+ * 
+ * You may not use this work except in compliance with the licence.
+ * You may obtain a copy of the Licence at:
+ * http://ec.europa.eu/idabc/eupl
+ * 
+ * Unless required by applicable law or agreed to in
+ * writing, software distributed under the Licence is
+ * distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied.
+ * 
+ * See the Licence for the specific language governing
+ * permissions and limitations under the Licence.
+ * 
+ ***************************************************************************/
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -175,7 +201,7 @@ namespace WetLib
         {
             // Istanzio la connessione al database wetnet
             WetConfig wcfg = new WetConfig();
-            wet_db = new WetDBConn(wcfg.GetWetDBDSN(), true);
+            wet_db = new WetDBConn(wcfg.GetWetDBDSN(), null, null, true);
             cfg = wcfg.GetWJ_Events_Config();
         }
 
@@ -188,6 +214,9 @@ namespace WetLib
             {
                 // Controllo che sia passata l'ora di verifica
                 if (DateTime.Now.Hour < CHECK_HOUR)
+                    return;
+                // Controllo cold_start_counter
+                if (WetEngine.cold_start_counter < 3)
                     return;
                 // Acquisisco tutti i distretti configurati
                 DataTable districts = wet_db.ExecCustomQuery("SELECT * FROM districts");
@@ -227,6 +256,9 @@ namespace WetLib
                     int alpha = Convert.ToInt32(district["ev_alpha"]);
                     // Acquisisco il numero di giorni per il trigger
                     int samples_trigger = Convert.ToInt32(district["ev_samples_trigger"]);
+                    // Acquisisco le soglie di invio segnalazione su evento
+                    double min_detectable_loss = Convert.ToDouble(district["min_detectable_loss"]);
+                    double min_detectable_rank = Convert.ToDouble(district["min_detectable_rank"]);
                     // Acquisisco l'ultimo evento registrato
                     Event last_registered_event = ReadLastEvent(id_district);
                     string measure_name = "min_night";
@@ -364,7 +396,7 @@ namespace WetLib
                                 if (can_write)
                                 {
                                     AppendEvent(ev);
-                                    ReportEvent(ev);
+                                    ReportEvent(ev, min_detectable_loss, min_detectable_rank);
                                 }
                                 // Non processo ulteriori eventi, esco e decremento di un giorno
                                 days--;
@@ -390,6 +422,66 @@ namespace WetLib
                             // Controllo il tempo di interpolazione
                             if (cfg.interpolation_time <= 0)
                                 throw new Exception("Interpolation time must be > 0!");
+
+                            /*****************************************/
+                            /*** Calcolo valori di efficientamento ***/
+                            /*****************************************/
+                            if (days == 0)
+                            {
+                                // Acquisisco l'ultimo evento del distretto
+                                DateTime last_day;
+                                Event ev_last = ReadLastEvent(id_district);
+                                if (bands_autoupdate)
+                                {
+                                    if (ev_last.type != EventTypes.POSSIBLE_GAIN)
+                                    {
+                                        // L'evento è valido, controllo la data
+                                        if ((DateTime.Now.Date - ev_last.day).Days < last_good_samples)
+                                            last_day = last_good_day;   // Non sono passati abbastanza giorni per il ricalcolo dei parametri, li calcolo basandomi sui valori impostati
+                                        else
+                                            last_day = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));
+                                    }
+                                    else
+                                        last_day = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));
+                                }
+                                else
+                                    last_day = last_good_day;
+                                // Trovo il vettore delle medie
+                                avg_vect = GetDayAvgVector(id_district, last_day, last_good_samples);
+                                // Calcolo media e deviazione standard
+                                double avg = WetStatistics.GetMean(avg_vect);
+                                double standard_deviation = WetStatistics.StandardDeviation(avg_vect);
+                                // Calcolo i valori proposti
+                                double phb = avg + (standard_deviation * alpha);
+                                double plb = avg - (standard_deviation * alpha);
+                                // Effettuo l'update sul DB
+                                wet_db.ExecCustomCommand("UPDATE districts SET ev_statistic_high_band = " + phb.ToString().Replace(',', '.') +
+                                    ", ev_statistic_low_band = " + plb.ToString().Replace(',', '.') + " WHERE id_districts = " + id_district.ToString());
+                                // Acquisisco la data dell'ultimo evento scritto
+                                tmp_dt = wet_db.ExecCustomQuery("SELECT * FROM districts_bands_history WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `timestamp` DESC LIMIT 1");
+                                DateTime last_change;
+                                if (tmp_dt.Rows.Count == 0)
+                                    last_change = DateTime.MinValue;
+                                else
+                                    last_change = Convert.ToDateTime(tmp_dt.Rows[0]["timestamp"]);
+                                // Effettuo l'autoupdate delle bande se abilitato
+                                if (((bands_autoupdate) && (ev_last.type == EventTypes.POSSIBLE_GAIN) &&
+                                     (ev_last.duration >= last_good_samples) &&
+                                     (last_change < ev_last.day) &&
+                                     (statistic_low_band != plb) && (statistic_high_band != phb)) ||
+                                    ((ev_enable == true) && (low_band == 0.0d) && (high_band == 0.0d)))
+                                {
+                                    // Aggiorno la tabella distretti
+                                    wet_db.ExecCustomCommand("UPDATE districts SET ev_high_band = " + phb.ToString().Replace(',', '.') +
+                                        ", ev_low_band = " + plb.ToString().Replace(',', '.') + " WHERE id_districts = " + id_district.ToString());
+                                    // Inserisco i nuovi valori nella tabella dei cambiamenti
+                                    wet_db.ExecCustomCommand("INSERT INTO districts_bands_history VALUES ('" +
+                                        DateTime.Now.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', " +
+                                        phb.ToString().Replace(',', '.') + ", " +
+                                        plb.ToString().Replace(',', '.') + ", " +
+                                        id_district.ToString() + ") ");
+                                }
+                            }
 
                             // Controllo se ho almeno un record statistico per il giorno precedente                            
                             if (no_valid_daily_statistic_record)
@@ -579,7 +671,7 @@ namespace WetLib
                                             }
                                             // Scrivo l'evento e lo riporto
                                             AppendEvent(ev);
-                                            ReportEvent(ev);
+                                            ReportEvent(ev, min_detectable_loss, min_detectable_rank);
                                         }
                                     }
                                     // Passo il controllo al S.O. per l'attesa
@@ -587,11 +679,18 @@ namespace WetLib
                                         return;
                                     Sleep();
                                 }
-                            }
+                            }                            
+
+                            #endregion
+                        }
+                        else
+                        {
+                            #region Variabili statistiche
 
                             /*****************************************/
                             /*** Calcolo valori di efficientamento ***/
                             /*****************************************/
+
                             if (days == 0)
                             {
                                 // Acquisisco l'ultimo evento del distretto
@@ -599,7 +698,7 @@ namespace WetLib
                                 Event ev_last = ReadLastEvent(id_district);
                                 if (bands_autoupdate)
                                 {
-                                    if (ev_last.type != EventTypes.NO_EVENT)
+                                    if (ev_last.type != EventTypes.POSSIBLE_GAIN)
                                     {
                                         // L'evento è valido, controllo la data
                                         if ((DateTime.Now.Date - ev_last.day).Days < last_good_samples)
@@ -612,11 +711,21 @@ namespace WetLib
                                 }
                                 else
                                     last_day = last_good_day;
-                                // Trovo il vettore delle medie
-                                avg_vect = GetDayAvgVector(id_district, last_day, last_good_samples);
-                                // Calcolo media e deviazione standard
-                                double avg = WetStatistics.GetMean(avg_vect);
-                                double standard_deviation = WetStatistics.StandardDeviation(avg_vect);
+                                // OK, posso ricalcolare i valori, acquisisco gli ultimi 'last_good_samples' valori
+                                DataTable last_good_samples_table = wet_db.ExecCustomQuery("SELECT `day`, `" + measure_name + "` FROM districts_day_statistic WHERE districts_id_districts = " +
+                                    id_district.ToString() + " AND `day` <= '" + last_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' ORDER BY `day` DESC LIMIT " + last_good_samples.ToString());
+                                // Vettorizzo
+                                List<double> lgsv = new List<double>();
+                                foreach (DataRow dr in last_good_samples_table.Rows)
+                                    lgsv.Add(Convert.ToDouble(dr[measure_name] == DBNull.Value ? 0.0d : dr[measure_name]));
+                                // Calcolo la media
+                                double avg = 0.0d;
+                                if (lgsv.Count > 0)
+                                    avg = WetStatistics.GetMean(lgsv.ToArray());
+                                // Calcolo la deviazione standard
+                                double standard_deviation = 0.0d;
+                                if (lgsv.Count > 1)
+                                    standard_deviation = WetStatistics.StandardDeviation(lgsv.ToArray());
                                 // Calcolo i valori proposti
                                 double phb = avg + (standard_deviation * alpha);
                                 double plb = avg - (standard_deviation * alpha);
@@ -648,12 +757,6 @@ namespace WetLib
                                         id_district.ToString() + ") ");
                                 }
                             }
-
-                            #endregion
-                        }
-                        else
-                        {
-                            #region Variabili statistiche
 
                             if (no_valid_daily_statistic_record)
                             {
@@ -827,80 +930,10 @@ namespace WetLib
                                         }
                                         // Scrivo l'evento e lo riporto
                                         AppendEvent(ev);
-                                        ReportEvent(ev);
+                                        ReportEvent(ev, min_detectable_loss, min_detectable_rank);
                                     }
                                 }
-                            }
-                            
-                            /*****************************************/
-                            /*** Calcolo valori di efficientamento ***/
-                            /*****************************************/
-                            if (days == 0)
-                            {
-                                // Acquisisco l'ultimo evento del distretto
-                                DateTime last_day;
-                                Event ev_last = ReadLastEvent(id_district);
-                                if (bands_autoupdate)
-                                {
-                                    if (ev_last.type != EventTypes.NO_EVENT)
-                                    {
-                                        // L'evento è valido, controllo la data
-                                        if ((DateTime.Now.Date - ev_last.day).Days < last_good_samples)
-                                            last_day = last_good_day;   // Non sono passati abbastanza giorni per il ricalcolo dei parametri, li calcolo basandomi sui valori impostati
-                                        else
-                                            last_day = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));
-                                    }
-                                    else
-                                        last_day = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));
-                                }
-                                else
-                                    last_day = last_good_day;
-                                // OK, posso ricalcolare i valori, acquisisco gli ultimi 'last_good_samples' valori
-                                DataTable last_good_samples_table = wet_db.ExecCustomQuery("SELECT `day`, `" + measure_name + "` FROM districts_day_statistic WHERE districts_id_districts = " +
-                                    id_district.ToString() + " AND `day` <= '" + last_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' ORDER BY `day` DESC LIMIT " + last_good_samples.ToString());
-                                // Vettorizzo
-                                List<double> lgsv = new List<double>();
-                                foreach (DataRow dr in last_good_samples_table.Rows)
-                                    lgsv.Add(Convert.ToDouble(dr[measure_name] == DBNull.Value ? 0.0d : dr[measure_name]));
-                                // Calcolo la media
-                                double avg = 0.0d;
-                                if (lgsv.Count > 0)
-                                    avg = WetStatistics.GetMean(lgsv.ToArray());
-                                // Calcolo la deviazione standard
-                                double standard_deviation = 0.0d;
-                                if (lgsv.Count > 1)
-                                    standard_deviation = WetStatistics.StandardDeviation(lgsv.ToArray());
-                                // Calcolo i valori proposti
-                                double phb = avg + (standard_deviation * alpha);
-                                double plb = avg - (standard_deviation * alpha);
-                                // Effettuo l'update sul DB
-                                wet_db.ExecCustomCommand("UPDATE districts SET ev_statistic_high_band = " + phb.ToString().Replace(',', '.') +
-                                    ", ev_statistic_low_band = " + plb.ToString().Replace(',', '.') + " WHERE id_districts = " + id_district.ToString());
-                                // Acquisisco la data dell'ultimo evento scritto
-                                tmp_dt = wet_db.ExecCustomQuery("SELECT * FROM districts_bands_history WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `timestamp` DESC LIMIT 1");
-                                DateTime last_change;
-                                if (tmp_dt.Rows.Count == 0)
-                                    last_change = DateTime.MinValue;
-                                else
-                                    last_change = Convert.ToDateTime(tmp_dt.Rows[0]["timestamp"]);
-                                // Effettuo l'autoupdate delle bande se abilitato
-                                if (((bands_autoupdate) && (ev_last.type == EventTypes.POSSIBLE_GAIN) &&
-                                     (ev_last.duration >= last_good_samples) &&
-                                     (last_change < ev_last.day) &&
-                                     (statistic_low_band != plb) && (statistic_high_band != phb)) ||
-                                    ((ev_enable == true) && (low_band == 0.0d) && (high_band == 0.0d)))
-                                {
-                                    // Aggiorno la tabella distretti
-                                    wet_db.ExecCustomCommand("UPDATE districts SET ev_high_band = " + phb.ToString().Replace(',', '.') +
-                                        ", ev_low_band = " + plb.ToString().Replace(',', '.') + " WHERE id_districts = " + id_district.ToString());
-                                    // Inserisco i nuovi valori nella tabella dei cambiamenti
-                                    wet_db.ExecCustomCommand("INSERT INTO districts_bands_history VALUES ('" +
-                                        DateTime.Now.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', " +
-                                        phb.ToString().Replace(',', '.') + ", " +
-                                        plb.ToString().Replace(',', '.') + ", " +
-                                        id_district.ToString() + ") ");
-                                }
-                            }
+                            }                                                        
 
                             #endregion
                         }
@@ -921,6 +954,9 @@ namespace WetLib
             {
                 WetDebug.GestException(ex);
             }
+            // Aggiorno cold_start_counter
+            if (WetEngine.cold_start_counter == 3)
+                WetEngine.cold_start_counter++;
         }
 
         #endregion
@@ -960,7 +996,7 @@ namespace WetLib
 
             return avg_vect;
         }
-
+        
         /// <summary>
         /// Legge gli ultimi eventi eccetto quelli del giorno attuale
         /// </summary>
@@ -976,6 +1012,48 @@ namespace WetLib
             DataTable events_table = wet_db.ExecCustomQuery("SELECT * FROM districts_events WHERE districts_id_districts = " + id_district.ToString() +
                 " AND `day` >= '" + first_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
                 "' AND `day` < '" + day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' ORDER BY `day` ASC");
+            List<Event> evs = new List<Event>();
+            for (int ii = 0; ii < events_table.Rows.Count; ii++)
+            {
+                Event ev;
+
+                ev.day = Convert.ToDateTime(events_table.Rows[ii]["day"]);
+                // Se fra questo evento ed il precedente è trascorso più di un giorno, azzero gli eventi precedenti
+                if (evs.Count > 0)
+                {
+                    if ((ev.day - evs.Last().day) > new TimeSpan(1, 0, 0, 0))
+                        evs.Clear();
+                }
+                ev.type = (EventTypes)Convert.ToInt32(events_table.Rows[ii]["type"]);
+                ev.measure_type = (DistrictStatisticMeasureType)Convert.ToInt32(events_table.Rows[ii]["measure_type"]);
+                ev.duration = Convert.ToInt32(events_table.Rows[ii]["duration"]);
+                ev.value = Convert.ToDouble(events_table.Rows[ii]["value"]);
+                ev.delta = Convert.ToDouble(events_table.Rows[ii]["delta_value"]);
+                ev.ranking = Convert.ToDouble(events_table.Rows[ii]["ranking"]);
+                ev.description = Convert.ToString(events_table.Rows[ii]["description"]);
+                ev.id_district = Convert.ToInt32(events_table.Rows[ii]["districts_id_districts"]);
+
+                evs.Add(ev);
+            }
+            events = evs.ToArray();
+        }
+
+        /// <summary>
+        /// Legge gli ultimi eventi eccetto quelli del giorno attuale escludento i "fuori controllo"
+        /// </summary>
+        /// <param name="id_district">ID del distretto</param>
+        /// <param name="day">Giorno di partenza</param>
+        /// <param name="number">Numero di eventi da leggere</param>
+        /// <param name="events">Vettore degli eventi</param>
+        void ReadLastPastEventsUnderControl(int id_district, DateTime day, int number, out Event[] events)
+        {
+            // Calcolo giorno di inizio e giorno di fine
+            DateTime first_day = day.Date.Subtract(new TimeSpan(number, 0, 0, 0));
+            // Acquisisco la lista degli ultimi eventi
+            DataTable events_table = wet_db.ExecCustomQuery("SELECT * FROM districts_events WHERE districts_id_districts = " + id_district.ToString() +
+                " AND `day` >= '" + first_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
+                "' AND `day` < '" + day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
+                "' AND `type` <> " + ((int)EventTypes.OUT_OF_CONTROL).ToString() + " ORDER BY `day` ASC");
             List<Event> evs = new List<Event>();
             for (int ii = 0; ii < events_table.Rows.Count; ii++)
             {
@@ -1077,119 +1155,137 @@ namespace WetLib
         /// Effettua il report di un allarme a tutti gli utenti abilitati
         /// </summary>
         /// <param name="ev">Evento</param>
-        void ReportEvent(Event ev)
+        /// <param name="min_detectable_loss">Soglia di invio sulle perdite</param>
+        /// <param name="min_detectable_rank">Soglia di invio sul rank delle perdite</param>
+        void ReportEvent(Event ev, double min_detectable_loss, double min_detectable_rank)
         {
             if ((ev.type != EventTypes.NO_EVENT) && (ev.day.Date == DateTime.Now.Subtract(new TimeSpan(1, 0, 0, 0)).Date))
             {
-                // Acquisisco il nome per il distretto
-                DataTable dt = wet_db.ExecCustomQuery("SELECT `name` FROM districts WHERE id_districts = " + ev.id_district);
-                string name = string.Empty;
-                if (dt.Rows.Count == 1)
-                    name += Convert.ToString(dt.Rows[0]["name"]);
-                // Compongo la stringa dell'evento
-                string sms_msg =
-                    "EventType:";
-                string mail_msg =
-                    "Event type   : ";
-                switch (ev.type)
+                // Controllo l'evento del giorno precedente
+                Event[] events;
+                ReadLastPastEvents(ev.id_district, DateTime.Now, 2, out events);
+                // Controllo che siano restituiti 2 valori
+                if ((events.Length == 2) || (ev.type == EventTypes.OUT_OF_CONTROL))
                 {
-                    case EventTypes.ANOMAL_INCREASE:
-                        mail_msg += "Anomal flow rate increase detected!";
-                        sms_msg += "flow+";
-                        break;
-
-                    case EventTypes.ANOMAL_DECREASE:
-                        mail_msg += "Anomal flow rate decrease detected!";
-                        sms_msg += "flow-";
-                        break;
-
-                    case EventTypes.POSSIBLE_LOSS:
-                        mail_msg += "Possible water loss detected!";
-                        sms_msg += "loss";
-                        break;
-
-                    case EventTypes.POSSIBLE_GAIN:
-                        mail_msg += "Possible water gain detected!";
-                        sms_msg += "gain";
-                        break;
-
-                    default:
-                        mail_msg += "Invalid!";
-                        sms_msg += "invalid";
-                        break;
-                }
-                mail_msg += Environment.NewLine +
-                    "Delta        : " + ev.delta.ToString("F", CultureInfo.InvariantCulture) + " l/s" + Environment.NewLine +
-                    "District     : " + name + " (#" + ev.id_district + ")" + Environment.NewLine +
-                    "Date         : " + ev.day.ToString("yyyy-MM-dd") + Environment.NewLine +
-                    "Duration     : " + ev.duration + " days" + Environment.NewLine +
-                    "Variable     : ";
-                sms_msg += " Delta:" + ev.delta.ToString("F", CultureInfo.InvariantCulture) +
-                    " District:" + ev.id_district +
-                    " Date:" + ev.day.ToString("yyyy-MM-dd") +
-                    " Duration:" + ev.duration +
-                    " Variable:";
-                switch (ev.measure_type)
-                {
-                    case DistrictStatisticMeasureType.MIN_NIGHT:
-                        mail_msg += "Min. Night";
-                        sms_msg += "MinNight";
-                        break;
-
-                    case DistrictStatisticMeasureType.MIN_DAY:
-                        mail_msg += "Min. Day";
-                        sms_msg += "MinDay";
-                        break;
-
-                    case DistrictStatisticMeasureType.AVG_DAY:
-                        mail_msg += "Avg. Day";
-                        sms_msg += "AvgDay";
-                        break;
-
-                    case DistrictStatisticMeasureType.MAX_DAY:
-                        mail_msg += "Max. Day";
-                        sms_msg += "MaxDay";
-                        break;
-
-                    case DistrictStatisticMeasureType.STATISTICAL_PROFILE:
-                        mail_msg += "Statistical profile";
-                        sms_msg += "StatProfile";
-                        break;
-
-                    default:
-                        mail_msg += "Unknown";
-                        sms_msg += "Unknown";
-                        break;
-                }
-                mail_msg += Environment.NewLine +
-                    "Actual value : " + ev.value.ToString("F", CultureInfo.InvariantCulture) + " l/s" + Environment.NewLine + Environment.NewLine +
-                    "###### Automatic message, please don't reply! ######";
-                sms_msg += " ActualValue:" + ev.value.ToString("F", CultureInfo.InvariantCulture);
-                // Acquisisco la lista di tutti gli utenti abilitati alla notifica sul distretto
-                dt = wet_db.ExecCustomQuery("SELECT * FROM users_has_districts INNER JOIN users ON users_has_districts.users_idusers = users.idusers WHERE districts_id_districts = " + ev.id_district + " AND events_notification = 1");
-                foreach (DataRow dr in dt.Rows)
-                {
-                    // Controllo che l'utente sia abilitato all'invio delle e-mail
-                    if (Convert.ToBoolean(dr["email_enabled"]))
+                    // Per l'invio dell'evento è necessario inoltre:
+                    // 1 - Che l'evento attuale sia un evento di perdita o di fuori controllo
+                    // 2 - Che l'evento precedente sia diverso dall'attuale
+                    if ((
+                        ((ev.type == EventTypes.POSSIBLE_LOSS) && ((ev.delta >= min_detectable_loss) || (ev.ranking >= min_detectable_rank))) || 
+                        (ev.type == EventTypes.OUT_OF_CONTROL)) && 
+                        (ev.type != events[0].type))
                     {
-                        // Controllo che il campo e-mail non sia vuoto
-                        string mail_address = Convert.ToString(dr["email"]);
-                        if (mail_address != null)
+                        // Acquisisco il nome per il distretto
+                        DataTable dt = wet_db.ExecCustomQuery("SELECT `name` FROM districts WHERE id_districts = " + ev.id_district);
+                        string name = string.Empty;
+                        if (dt.Rows.Count == 1)
+                            name += Convert.ToString(dt.Rows[0]["name"]);
+                        // Compongo la stringa dell'evento
+                        string sms_msg =
+                            "EventType:";
+                        string mail_msg =
+                            "Event type   : ";
+                        switch (ev.type)
                         {
-                            if (mail_address != string.Empty)
+                            case EventTypes.ANOMAL_INCREASE:
+                                mail_msg += "Anomal flow rate increase detected!";
+                                sms_msg += "flow+";
+                                break;
+
+                            case EventTypes.ANOMAL_DECREASE:
+                                mail_msg += "Anomal flow rate decrease detected!";
+                                sms_msg += "flow-";
+                                break;
+
+                            case EventTypes.POSSIBLE_LOSS:
+                                mail_msg += "Possible water loss detected!";
+                                sms_msg += "loss";
+                                break;
+
+                            case EventTypes.POSSIBLE_GAIN:
+                                mail_msg += "Possible water gain detected!";
+                                sms_msg += "gain";
+                                break;
+
+                            default:
+                                mail_msg += "Invalid!";
+                                sms_msg += "invalid";
+                                break;
+                        }
+                        mail_msg += Environment.NewLine +
+                            "Delta        : " + ev.delta.ToString("F", CultureInfo.InvariantCulture) + " l/s" + Environment.NewLine +
+                            "District     : " + name + " (#" + ev.id_district + ")" + Environment.NewLine +
+                            "Date         : " + ev.day.ToString("yyyy-MM-dd") + Environment.NewLine +
+                            "Duration     : " + ev.duration + " days" + Environment.NewLine +
+                            "Variable     : ";
+                        sms_msg += " Delta:" + ev.delta.ToString("F", CultureInfo.InvariantCulture) +
+                            " District:" + ev.id_district +
+                            " Date:" + ev.day.ToString("yyyy-MM-dd") +
+                            " Duration:" + ev.duration +
+                            " Variable:";
+                        switch (ev.measure_type)
+                        {
+                            case DistrictStatisticMeasureType.MIN_NIGHT:
+                                mail_msg += "Min. Night";
+                                sms_msg += "MinNight";
+                                break;
+
+                            case DistrictStatisticMeasureType.MIN_DAY:
+                                mail_msg += "Min. Day";
+                                sms_msg += "MinDay";
+                                break;
+
+                            case DistrictStatisticMeasureType.AVG_DAY:
+                                mail_msg += "Avg. Day";
+                                sms_msg += "AvgDay";
+                                break;
+
+                            case DistrictStatisticMeasureType.MAX_DAY:
+                                mail_msg += "Max. Day";
+                                sms_msg += "MaxDay";
+                                break;
+
+                            case DistrictStatisticMeasureType.STATISTICAL_PROFILE:
+                                mail_msg += "Statistical profile";
+                                sms_msg += "StatProfile";
+                                break;
+
+                            default:
+                                mail_msg += "Unknown";
+                                sms_msg += "Unknown";
+                                break;
+                        }
+                        mail_msg += Environment.NewLine +
+                            "Actual value : " + ev.value.ToString("F", CultureInfo.InvariantCulture) + " l/s" + Environment.NewLine + Environment.NewLine +
+                            "###### Automatic message, please don't reply! ######";
+                        sms_msg += " ActualValue:" + ev.value.ToString("F", CultureInfo.InvariantCulture);
+                        // Acquisisco la lista di tutti gli utenti abilitati alla notifica sul distretto
+                        dt = wet_db.ExecCustomQuery("SELECT * FROM users_has_districts INNER JOIN users ON users_has_districts.users_idusers = users.idusers WHERE districts_id_districts = " + ev.id_district + " AND events_notification = 1");
+                        foreach (DataRow dr in dt.Rows)
+                        {
+                            // Controllo che l'utente sia abilitato all'invio delle e-mail
+                            if (Convert.ToBoolean(dr["email_enabled"]))
                             {
-                                // Compongo la mail
-                                SmtpClient smtp_client = new SmtpClient();
-                                smtp_client.Host = cfg.smtp_server;
-                                smtp_client.Port = cfg.smtp_server_port;
-                                smtp_client.EnableSsl = cfg.smtp_use_ssl;
-                                smtp_client.Credentials = new NetworkCredential(cfg.smtp_username, cfg.smtp_password);
-                                MailMessage msg = new MailMessage();
-                                msg.From = new MailAddress(cfg.smtp_username);
-                                msg.To.Add(mail_address);
-                                msg.Subject = "WetNet event report";
-                                msg.Body = mail_msg;
-                                smtp_client.Send(msg);
+                                // Controllo che il campo e-mail non sia vuoto
+                                string mail_address = Convert.ToString(dr["email"]);
+                                if (mail_address != null)
+                                {
+                                    if (mail_address != string.Empty)
+                                    {
+                                        // Compongo la mail
+                                        SmtpClient smtp_client = new SmtpClient();
+                                        smtp_client.Host = cfg.smtp_server;
+                                        smtp_client.Port = cfg.smtp_server_port;
+                                        smtp_client.EnableSsl = cfg.smtp_use_ssl;
+                                        smtp_client.Credentials = new NetworkCredential(cfg.smtp_username, cfg.smtp_password);
+                                        MailMessage msg = new MailMessage();
+                                        msg.From = new MailAddress(cfg.smtp_username);
+                                        msg.To.Add(mail_address);
+                                        msg.Subject = "WetNet event report";
+                                        msg.Body = mail_msg;
+                                        smtp_client.Send(msg);
+                                    }
+                                }
                             }
                         }
                     }

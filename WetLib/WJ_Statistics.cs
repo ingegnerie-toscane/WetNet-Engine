@@ -1,4 +1,30 @@
-﻿using System;
+﻿/****************************************************************************
+ * 
+ * WetLib - Common library for WetNet applications.
+ * Copyright 2013-2015 Ingegnerie Toscane S.r.l.
+ * 
+ * This file is part of WetNet application.
+ * 
+ * Licensed under the EUPL, Version 1.1 or – as soon they
+ * will be approved by the European Commission - subsequent
+ * versions of the EUPL (the "Licence");
+ * 
+ * You may not use this work except in compliance with the licence.
+ * You may obtain a copy of the Licence at:
+ * http://ec.europa.eu/idabc/eupl
+ * 
+ * Unless required by applicable law or agreed to in
+ * writing, software distributed under the Licence is
+ * distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+ * express or implied.
+ * 
+ * See the Licence for the specific language governing
+ * permissions and limitations under the Licence.
+ * 
+ ***************************************************************************/
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,17 +51,6 @@ namespace WetLib
         /// </summary>
         public const int CHECK_HOUR = 3;
 
-        /// <summary>
-        /// Giorni di correlazione
-        /// </summary>
-        /// <remarks>1 anno</remarks>
-        public const int CORRELATION_TIME_DAYS = 365;
-
-        /// <summary>
-        /// Intervallo in ore fra le correlazioni
-        /// </summary>
-        public const int CORRELATION_CHECK_HOURS = 24;
-
         #endregion
 
         #region Istanze
@@ -53,16 +68,6 @@ namespace WetLib
         /// Configurazione del job
         /// </summary>
         WetConfig.WJ_Statistics_Config_Struct config;
-
-        /// <summary>
-        /// Data e ora ultima esecuzione delle correlazioni
-        /// </summary>
-        DateTime last_correlation = DateTime.MinValue;
-
-        /// <summary>
-        /// Token di cancellazione per la correlazione
-        /// </summary>
-        CancellationTokenSource ct_correlation = new CancellationTokenSource();
 
         #endregion
 
@@ -88,7 +93,7 @@ namespace WetLib
         {
             // Istanzio la connessione al database wetnet
             WetConfig cfg = new WetConfig();
-            wet_db = new WetDBConn(cfg.GetWetDBDSN(), true);
+            wet_db = new WetDBConn(cfg.GetWetDBDSN(), null, null, true);
             config = cfg.GetWJ_Statistics_Config();
         }
 
@@ -100,27 +105,16 @@ namespace WetLib
             // Controllo che sia passata l'ora di verifica
             if (DateTime.Now.Hour < CHECK_HOUR)
                 return;
+            // Controllo cold_start_counter
+            if (WetEngine.cold_start_counter < 2)
+                return;
             // Processo la statistica sulle misure
             MeasuresStatistic();
             // Processo la statistica sui distretti
             DistrictsStatistic();
-            // Controllo correlazioni
-            if ((DateTime.Now - last_correlation).TotalHours > CORRELATION_CHECK_HOURS)
-            {
-                Task.Run(() =>
-                {
-                    // Correlo le misure
-                    MeasuresCorrelations();
-                }, ct_correlation.Token);
-            }
-        }
-
-        /// <summary>
-        /// Cancello i task in background
-        /// </summary>
-        protected override void UnLoad()
-        {
-            ct_correlation.Cancel();
+            // Aggiorno cold_start_counter
+            if (WetEngine.cold_start_counter == 2)
+                WetEngine.cold_start_counter++;
         }
 
         #endregion
@@ -324,6 +318,8 @@ namespace WetLib
                         double not_household_night_use = Convert.ToDouble(district["not_household_night_use"]);
                         // Controllo il campo di reset
                         int reset_all_data = Convert.ToInt32(district["reset_all_data"]);
+                        if ((reset_all_data >= id_district) && (reset_all_data < (id_district + 2)))
+                            continue;
                         // Leggo l'ultimo giorno scritto sulle statistiche
                         DateTime first_day = DateTime.MinValue;
                         DataTable first_day_table = wet_db.ExecCustomQuery("SELECT * FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `day` DESC LIMIT 1");
@@ -339,7 +335,7 @@ namespace WetLib
                             continue;
                         // Controllo se ci sono delle pressioni che siano aggiornate
                         DataTable pressure = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND measures.type = 1");
-                        bool can_continue = true;
+                        bool pressure_statistics_presence = true;
                         foreach (DataRow pm in pressure.Rows)
                         {
                             // Acquisisco l'ID della misura di pressione
@@ -348,7 +344,7 @@ namespace WetLib
                             DataTable mnp_t = wet_db.ExecCustomQuery("SELECT min_night FROM measures_day_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " AND `day` = '" + DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0)).ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
                             if (mnp_t.Rows.Count == 0)
                             {
-                                can_continue = false;
+                                pressure_statistics_presence = false;
                                 break;
                             }
                             // Passo il controllo al S.O. per l'attesa
@@ -356,8 +352,6 @@ namespace WetLib
                                 return;
                             Sleep();
                         }
-                        if (!can_continue)
-                            continue;
                         // Controllo il numero di giorni da campionare
                         first_day = first_day.AddDays(1.0d);
                         DataTable days_table = wet_db.ExecCustomQuery("SELECT DISTINCT DATE(`timestamp`) AS `date` FROM data_districts WHERE `timestamp` > '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` < '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND districts_id_districts = " + id_district + " ORDER BY `date` ASC");
@@ -500,7 +494,7 @@ namespace WetLib
                             // Vettore con le medie delle pressioni minime notturne
                             List<double> ps_min_night = new List<double>();
                             // Ciclo per tutte le pressioni, se presenti
-                            if (pressure.Rows.Count > 0)
+                            if ((pressure.Rows.Count > 0) && pressure_statistics_presence)
                             {
                                 foreach (DataRow dr in pressure.Rows)
                                 {
@@ -654,123 +648,6 @@ namespace WetLib
             catch (Exception ex1)
             {
                 WetDebug.GestException(ex1);
-            }
-        }
-
-        /// <summary>
-        /// Esegue le correlazioni fra le misure
-        /// </summary>        
-        void MeasuresCorrelations()
-        {            
-            WetDBConn db = null;
-            try
-            {
-                // Carico la configurazione del DSN
-                WetConfig cfg = new WetConfig();
-                // Istanzio la connessione al database
-                db = new WetDBConn(cfg.GetWetDBDSN(), true);
-                // Imposto il timestamp di correlazione
-                last_correlation = DateTime.Now;
-                // Creazione della lista delle tuple
-                List<Tuple<int, int>> measures_tuples = new List<Tuple<int, int>>();
-                // Calcolo il primo giorno di analisi
-                DateTime first_day = DateTime.Now.Subtract(new TimeSpan(CORRELATION_TIME_DAYS, 0, 0, 0));
-                // Acquisisco tutte le misure configurate
-                DataTable measures = db.ExecCustomQuery("SELECT * FROM measures");
-                // Ciclo per tutte le misure configurate
-                foreach (DataRow measure in measures.Rows)
-                {
-                    // Acquisisco l'id della misura
-                    int id_measure = Convert.ToInt32(measure["id_measures"]);
-                    try
-                    {
-                        // Ciclo per tutte le misure eccetto la presente
-                        foreach (DataRow other_measure in measures.Rows)
-                        {
-                            // In caso di richiesta di cancellazione del task la processo immediatamente
-                            if (ct_correlation.IsCancellationRequested)
-                                return;
-                            // Acquisisco l'id della misura
-                            int id_other_measure = Convert.ToInt32(other_measure["id_measures"]);
-                            // Se la misura è la stessa la salto
-                            if (id_measure == id_other_measure)
-                                continue;
-                            try
-                            {
-                                // Controllo che la tupla non esista
-                                if (measures_tuples.Any(x => x == new Tuple<int, int>(id_measure, id_other_measure) || x == new Tuple<int, int>(id_other_measure, id_measure)))
-                                    continue;
-                                // Calcolo la correlazione con l'indice di Bravais-Pearson
-                                DataTable dt = db.ExecCustomQuery(
-                                    "SELECT ((AVG(dt.mul) - (AVG(dt.v1) * AVG(dt.v2))) / (STDDEV_POP(dt.v1) * STDDEV_POP(dt.v2))) AS pearson_correlation " +
-                                    "FROM " +
-                                    "(" +
-                                    "   SELECT t1.`timestamp` AS ts, t1.`value` AS v1, t2.`value` AS v2, (t1.`value` * t2.`value`) AS mul" +
-                                    "   FROM data_measures t1" +
-                                    "   INNER JOIN data_measures t2" +
-                                    "   ON t1.`timestamp` = t2.`timestamp` AND t1.measures_id_measures = " + id_measure.ToString() +
-                                    "   AND t2.measures_id_measures = " + id_other_measure.ToString() +
-                                    "   AND t1.`timestamp` >= '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
-                                    "   AND t2.`timestamp` >= '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
-                                    "   ORDER BY ts ASC" +
-                                    ") AS dt");
-                                double correlation = Convert.ToDouble(dt.Rows[0]["pearson_correlation"]);
-                                // Controllo l'ordine della tupla
-                                int tp_type = 0;
-                                DataTable tp0 = db.ExecCustomQuery("SELECT * FROM measures_correlations " +
-                                    "WHERE `id_first_measure` = " + id_measure.ToString() + " AND `id_second_measure` = " + id_other_measure.ToString());
-                                DataTable tp1 = db.ExecCustomQuery("SELECT * FROM measures_correlations " +
-                                    "WHERE `id_first_measure` = " + id_other_measure.ToString() + " AND `id_second_measure` = " + id_measure.ToString());
-                                if (tp0.Rows.Count > 1)
-                                {
-                                    db.ExecCustomCommand("DELETE FROM measures_correlations " +
-                                        "WHERE `id_first_measure` = " + id_measure.ToString() + " AND `id_second_measure` = " + id_other_measure.ToString());
-                                }
-                                if (tp1.Rows.Count > 1)
-                                {
-                                    db.ExecCustomCommand("DELETE FROM measures_correlations " +
-                                        "WHERE `id_first_measure` = " + id_other_measure.ToString() + " AND `id_second_measure` = " + id_measure.ToString());
-                                }
-                                if (tp1.Rows.Count == 1)
-                                    tp_type = 1;
-                                // Inserisco la tupla
-                                string qs;
-                                switch (tp_type)
-                                {
-                                    default:
-                                    case 0:
-                                        qs = "INSERT INTO measures_correlations VALUES ("
-                                            + id_measure.ToString() + ", " + id_other_measure.ToString() + ", " + correlation.ToString().Replace(',', '.') + ") " +
-                                            "ON DUPLICATE KEY UPDATE `pearson_correlation` = " + correlation.ToString().Replace(',', '.');
-                                        break;
-
-                                    case 1:
-                                        qs = "INSERT INTO measures_correlations VALUES ("
-                                            + id_other_measure.ToString() + ", " + id_measure.ToString() + ", " + correlation.ToString().Replace(',', '.') + ") " +
-                                            "ON DUPLICATE KEY UPDATE `pearson_correlation` = " + correlation.ToString().Replace(',', '.');
-                                        break;
-                                }
-                                db.ExecCustomCommand(qs);
-                            }
-                            catch (Exception ex0)
-                            {
-                                WetDebug.GestException(ex0);
-                            }
-                            // Aggiungo la tupla
-                            measures_tuples.Add(new Tuple<int, int>(id_measure, id_other_measure));
-                            // Passo il controllo al S.O.
-                            Thread.Sleep(1);
-                        }
-                    }
-                    catch (Exception ex1)
-                    {
-                        WetDebug.GestException(ex1);
-                    }
-                }
-            }
-            catch (Exception ex2)
-            {
-                WetDebug.GestException(ex2);
             }
         }
 
