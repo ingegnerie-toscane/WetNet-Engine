@@ -107,20 +107,23 @@ namespace WetLib
                     // Creo una tabella di bilancio di portata
                     DataTable balance = new DataTable();
                     balance.Columns.Add("timestamp", typeof(DateTime));
-                    balance.Columns.Add("reliable", typeof(bool));
+                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                        balance.Columns.Add("reliable", typeof(bool));
                     balance.Columns.Add("value", typeof(double));
                     balance.Columns.Add("districts_id_districts", typeof(int));
                     // Creo la tabella di bilancio energetico
                     DataTable districts_energy_profile = new DataTable();
                     districts_energy_profile.Columns.Add("timestamp", typeof(DateTime));
-                    districts_energy_profile.Columns.Add("reliable", typeof(bool));
+                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                        districts_energy_profile.Columns.Add("reliable", typeof(bool));
                     districts_energy_profile.Columns.Add("value", typeof(double));
                     districts_energy_profile.Columns.Add("districts_id_districts", typeof(int));
                     districts_energy_profile.PrimaryKey = new DataColumn[] { districts_energy_profile.Columns["timestamp"] };
                     // Creo una tabella di interscambio per la portata
                     DataTable xchange = new DataTable();
                     xchange.Columns.Add("timestamp", typeof(DateTime));
-                    xchange.Columns.Add("reliable", typeof(bool));
+                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                        xchange.Columns.Add("reliable", typeof(bool));
                     xchange.Columns.Add("plus", typeof(double));
                     xchange.Columns.Add("minus", typeof(double));
                     xchange.PrimaryKey = new DataColumn[] { xchange.Columns["timestamp"] };                                        
@@ -178,11 +181,13 @@ namespace WetLib
                     tmp = wet_db.ExecCustomQuery(query);
                     // Creo una tabella unita per timestamp
                     foreach (DataRow dr in tmp.Rows)
-                    {
+                    {                        
                         // Definisco la misura letta nella riga
                         int id_measure = Convert.ToInt32(dr["measures_id_measures"]);
                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
-                        bool reliable = Convert.ToBoolean(dr["reliable"]);
+                        bool reliable = true;
+                        if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            reliable = Convert.ToBoolean(dr["reliable"]);
                         double value = Convert.ToDouble(dr["value"]);
                         DistrictsMeasuresSigns sign = (DistrictsMeasuresSigns)Convert.ToInt32(measures.Rows.Find(id_measure)["sign"]);
                         // Se non esiste il record di bilancio, lo creo, altrimenti prendo l'esistente                        
@@ -191,7 +196,8 @@ namespace WetLib
                         {
                             record = xchange.NewRow();
                             record["timestamp"] = ts;
-                            record["reliable"] = true;
+                            if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                                record["reliable"] = true;
                             record["plus"] = 0.0d;
                             record["minus"] = 0.0d;
                             xchange.Rows.Add(record);
@@ -199,7 +205,8 @@ namespace WetLib
                         record = xchange.Rows.Find(ts);
                         int record_index = xchange.Rows.IndexOf(record);
                         // Popolo il record corrente
-                        xchange.Rows[record_index]["reliable"] = (Convert.ToBoolean(xchange.Rows[record_index]["reliable"]) ? reliable : false);
+                        if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            xchange.Rows[record_index]["reliable"] = (Convert.ToBoolean(xchange.Rows[record_index]["reliable"]) ? reliable : false);
                         switch (sign)
                         {
                             case DistrictsMeasuresSigns.PLUS:
@@ -214,14 +221,19 @@ namespace WetLib
                     // Dalla tabella di interscambio creo il bilancio di distretto
                     foreach (DataRow dr in xchange.Rows)
                     {
+                        bool reliable = true;
                         // Calcolo il bilancio
                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
-                        bool reliable = Convert.ToBoolean(dr["reliable"]);
+                        if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            reliable = Convert.ToBoolean(dr["reliable"]);
                         double plus = Convert.ToDouble(dr["plus"]);
                         double minus = Convert.ToDouble(dr["minus"]);
                         double result = (plus - minus);
                         // Aggiungo la riga al profilo del distretto
-                        balance.Rows.Add(ts, reliable, result, id_district);
+                        if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            balance.Rows.Add(ts, reliable, result, id_district);
+                        else
+                            balance.Rows.Add(ts, result, id_district);
                     }
                     wet_db.TableInsert(balance, "data_districts");
 
@@ -247,7 +259,9 @@ namespace WetLib
                         // Definisco la misura letta nella riga
                         int id_measure = Convert.ToInt32(dr["measures_id_measures"]);
                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
-                        bool reliable = Convert.ToBoolean(dr["reliable"]);
+                        bool reliable = true;
+                        if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            reliable = Convert.ToBoolean(dr["reliable"]);
                         double value = Convert.ToDouble(dr["value"]);
                         DistrictsMeasuresSigns sign = (DistrictsMeasuresSigns)Convert.ToInt32(measures.Rows.Find(id_measure)["sign"]);
                         // Se non esiste il record di bilancio, lo creo, altrimenti prendo l'esistente
@@ -256,7 +270,8 @@ namespace WetLib
                         {
                             record = districts_energy_profile.NewRow();
                             record["timestamp"] = ts;
-                            record["reliable"] = true;
+                            if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                                record["reliable"] = true;
                             record["value"] = 0.0d;
                             record["districts_id_districts"] = id_district;
                             districts_energy_profile.Rows.Add(record);
@@ -266,7 +281,8 @@ namespace WetLib
                         // Popolo il record corrente e sommo i valori
                         if (sign == DistrictsMeasuresSigns.PLUS)
                         {
-                            districts_energy_profile.Rows[record_index]["reliable"] = (Convert.ToBoolean(districts_energy_profile.Rows[record_index]["reliable"]) ? reliable : false);
+                            if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                                districts_energy_profile.Rows[record_index]["reliable"] = (Convert.ToBoolean(districts_energy_profile.Rows[record_index]["reliable"]) ? reliable : false);
                             districts_energy_profile.Rows[record_index]["value"] = Convert.ToDouble(districts_energy_profile.Rows[record_index]["value"]) + value;
                         }
                     }

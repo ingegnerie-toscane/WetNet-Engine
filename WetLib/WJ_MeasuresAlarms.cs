@@ -379,18 +379,32 @@ namespace WetLib
         /// <param name="alarm">Allarme</param>
         void InsertAlarm(AlarmStruct alarm)
         {
-            // Inserisco l'allarme
-            wet_db.ExecCustomCommand("INSERT INTO measures_alarms VALUES ('" +
-                alarm.timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', " +
-                ((int)alarm.alarm_type).ToString() + ", " + ((int)alarm.event_type).ToString() + ", " +
-                alarm.alarm_value.ToString().Replace(',', '.') + ", " +
-                alarm.reference_value.ToString().Replace(',', '.') + ", '" +
-                alarm.duration.ToString(WetDBConn.MYSQL_TIME_FORMAT) + "', " +
-                alarm.id_measure.ToString() + ", " +
-                alarm.id_odbcdsn.ToString() + ")");
-            // Imposto il bit di qualità sulla misura
-            wet_db.ExecCustomCommand("UPDATE measures SET `reliable` = " + (alarm.event_type == EventTypes.ALARM_ON ? 0 : 1).ToString() +
-                " WHERE id_measures = " + alarm.id_measure);
+            if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+            {
+                // Inserisco l'allarme
+                wet_db.ExecCustomCommand("INSERT INTO measures_alarms VALUES ('" +
+                    alarm.timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', " +
+                    ((int)alarm.alarm_type).ToString() + ", " + ((int)alarm.event_type).ToString() + ", " +
+                    alarm.alarm_value.ToString().Replace(',', '.') + ", " +
+                    alarm.reference_value.ToString().Replace(',', '.') + ", '" +
+                    alarm.duration.ToString(WetDBConn.MYSQL_TIME_FORMAT) + "', " +
+                    alarm.id_measure.ToString() + ", " +
+                    alarm.id_odbcdsn.ToString() + ")");
+                // Imposto il bit di qualità sulla misura
+                wet_db.ExecCustomCommand("UPDATE measures SET `reliable` = " + (alarm.event_type == EventTypes.ALARM_ON ? 0 : 1).ToString() +
+                    " WHERE id_measures = " + alarm.id_measure);
+            }
+            else if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V2_0)
+            {
+                // Inserisco l'allarme
+                wet_db.ExecCustomCommand("INSERT INTO measures_alarms VALUES ('" +
+                    alarm.timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', " +
+                    ((int)alarm.alarm_type).ToString() + ", " + ((int)alarm.event_type).ToString() + ", " +
+                    alarm.alarm_value.ToString().Replace(',', '.') + ", " +
+                    alarm.reference_value.ToString().Replace(',', '.') + ", '" +
+                    alarm.duration.ToString(WetDBConn.MYSQL_TIME_FORMAT) + "', " +
+                    alarm.id_measure.ToString() + ")");
+            }
         }
 
         /// <summary>
@@ -417,7 +431,10 @@ namespace WetLib
                 string[] strs = Convert.ToString(last_alarm_data.Rows[0]["duration"]).Split(new char[] { ':' });
                 last_alarm.duration = new TimeSpan(Convert.ToInt32(strs[0]), Convert.ToInt32(strs[1]), Convert.ToInt32(strs[2]));
                 last_alarm.id_measure = Convert.ToInt32(last_alarm_data.Rows[0]["measures_id_measures"]);
-                last_alarm.id_odbcdsn = Convert.ToInt32(last_alarm_data.Rows[0]["measures_connections_id_odbcdsn"]);
+                if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                    last_alarm.id_odbcdsn = Convert.ToInt32(last_alarm_data.Rows[0]["measures_connections_id_odbcdsn"]);
+                else
+                    last_alarm.id_odbcdsn = id_odbcdsn;
             }
             else
             {

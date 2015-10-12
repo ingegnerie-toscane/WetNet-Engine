@@ -162,7 +162,11 @@ namespace WetLib
                             if (current_statistics.Rows.Count == 0)
                             {
                                 // Creo il record
-                                int count = wet_db.ExecCustomCommand("INSERT INTO measures_day_statistic VALUES ('" + current_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "', " + (WetUtility.IsHolyday(current_day) ? ((int)DayTypes.holyday).ToString() : ((int)DayTypes.workday).ToString()) + ", NULL, NULL, NULL, NULL, NULL, NULL, " + id_measure + ", " + id_odbc_dsn + ")");
+                                int count = 0;
+                                if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                                    count = wet_db.ExecCustomCommand("INSERT INTO measures_day_statistic VALUES ('" + current_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "', " + (WetUtility.IsHolyday(current_day) ? ((int)DayTypes.holyday).ToString() : ((int)DayTypes.workday).ToString()) + ", NULL, NULL, NULL, NULL, NULL, NULL, " + id_measure + ", " + id_odbc_dsn + ")");
+                                else
+                                    count = wet_db.ExecCustomCommand("INSERT INTO measures_day_statistic VALUES ('" + current_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "', " + (WetUtility.IsHolyday(current_day) ? ((int)DayTypes.holyday).ToString() : ((int)DayTypes.workday).ToString()) + ", NULL, NULL, NULL, NULL, NULL, NULL, " + id_measure + ")");
                                 if (count != 1)
                                     throw new Exception("Unattempted error while adding new measure statistic record!");
                                 current_statistics = wet_db.ExecCustomQuery("SELECT * FROM measures_day_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " AND `day` = '" + current_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
@@ -177,36 +181,8 @@ namespace WetLib
                             DateTime dt_min_night_stop_time = new DateTime(current_day.Year, current_day.Month, current_day.Day,
                                 ts_min_night_stop_time.Hours, ts_min_night_stop_time.Minutes, ts_min_night_stop_time.Seconds);
                             // Acquisisco le tre finestre per il calcolo della massima giornaliera
-                            DateTime dt_max_day_start_time_1, dt_max_day_start_time_2, dt_max_day_start_time_3,
-                                dt_max_day_stop_time_1, dt_max_day_stop_time_2, dt_max_day_stop_time_3;
-                            if (WetUtility.IsHolyday(current_day))
-                            {
-                                dt_max_day_start_time_1 = dt_max_day_start_time_2 = dt_max_day_start_time_3 = new DateTime(
-                                    current_day.Year, current_day.Month, current_day.Day, 0, 0, 0);
-                                dt_max_day_stop_time_1 = dt_max_day_stop_time_2 = dt_max_day_stop_time_3 = new DateTime(
-                                    current_day.Year, current_day.Month, current_day.Day, 23, 59, 59);
-                            }
-                            else
-                            {
-                                TimeSpan ts_max_day_start_time_1 = (TimeSpan)measure["max_day_start_time_1"];
-                                TimeSpan ts_max_day_stop_time_1 = (TimeSpan)measure["max_day_stop_time_1"];
-                                dt_max_day_start_time_1 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_start_time_1.Hours, ts_max_day_start_time_1.Minutes, ts_max_day_start_time_1.Seconds);
-                                dt_max_day_stop_time_1 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_stop_time_1.Hours, ts_max_day_stop_time_1.Minutes, ts_max_day_stop_time_1.Seconds);
-                                TimeSpan ts_max_day_start_time_2 = (TimeSpan)measure["max_day_start_time_2"];
-                                TimeSpan ts_max_day_stop_time_2 = (TimeSpan)measure["max_day_stop_time_2"];
-                                dt_max_day_start_time_2 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_start_time_2.Hours, ts_max_day_start_time_2.Minutes, ts_max_day_start_time_2.Seconds);
-                                dt_max_day_stop_time_2 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_stop_time_2.Hours, ts_max_day_stop_time_2.Minutes, ts_max_day_stop_time_2.Seconds);
-                                TimeSpan ts_max_day_start_time_3 = (TimeSpan)measure["max_day_start_time_3"];
-                                TimeSpan ts_max_day_stop_time_3 = (TimeSpan)measure["max_day_stop_time_3"];
-                                dt_max_day_start_time_3 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_start_time_3.Hours, ts_max_day_start_time_3.Minutes, ts_max_day_start_time_3.Seconds);
-                                dt_max_day_stop_time_3 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_stop_time_3.Hours, ts_max_day_stop_time_3.Minutes, ts_max_day_stop_time_3.Seconds);
-                            }
+                            DateTime dt_max_day_start_time = new DateTime(current_day.Year, current_day.Month, current_day.Day, 0, 0, 0);
+                            DateTime dt_max_day_stop_time = new DateTime(current_day.Year, current_day.Month, current_day.Day, 23, 59, 59);
                             // Calcolo la minima notturna e variabili collegate                   
                             double min_night = double.NaN;
                             DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM data_measures WHERE `measures_id_measures` = " + id_measure.ToString() + " AND (`timestamp` >= '" + dt_min_night_start_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_min_night_stop_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "') ORDER BY `timestamp` ASC");
@@ -222,9 +198,7 @@ namespace WetLib
                             // Calcolo le massime giornaliere
                             double max_day = double.NaN;
                             dt = wet_db.ExecCustomQuery("SELECT * FROM data_measures WHERE `measures_id_measures` = " + id_measure.ToString() +
-                                " AND ((`timestamp` >= '" + dt_max_day_start_time_1.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_max_day_stop_time_1.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "')" +
-                                " OR (`timestamp` >= '" + dt_max_day_start_time_2.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_max_day_stop_time_2.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "')" +
-                                " OR (`timestamp` >= '" + dt_max_day_start_time_3.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_max_day_stop_time_3.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "')) ORDER BY `timestamp` ASC");
+                                " AND (`timestamp` >= '" + dt_max_day_start_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_max_day_stop_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "') ORDER BY `timestamp` ASC");
                             if (dt.Rows.Count > 0)
                                 max_day = WetStatistics.GetMax(WetUtility.GetDoubleValuesFromColumn(dt, "value"));
                             if (!double.IsNaN(max_day))
@@ -379,36 +353,8 @@ namespace WetLib
                             DateTime dt_min_night_stop_time = new DateTime(current_day.Year, current_day.Month, current_day.Day,
                                 ts_min_night_stop_time.Hours, ts_min_night_stop_time.Minutes, ts_min_night_stop_time.Seconds);
                             // Acquisisco le tre finestre per il calcolo della massima giornaliera
-                            DateTime dt_max_day_start_time_1, dt_max_day_start_time_2, dt_max_day_start_time_3,
-                                dt_max_day_stop_time_1, dt_max_day_stop_time_2, dt_max_day_stop_time_3;
-                            if (WetUtility.IsHolyday(current_day))
-                            {
-                                dt_max_day_start_time_1 = dt_max_day_start_time_2 = dt_max_day_start_time_3 = new DateTime(
-                                    current_day.Year, current_day.Month, current_day.Day, 0, 0, 0);
-                                dt_max_day_stop_time_1 = dt_max_day_stop_time_2 = dt_max_day_stop_time_3 = new DateTime(
-                                    current_day.Year, current_day.Month, current_day.Day, 23, 59, 59);
-                            }
-                            else
-                            {
-                                TimeSpan ts_max_day_start_time_1 = (TimeSpan)district["max_day_start_time_1"];
-                                TimeSpan ts_max_day_stop_time_1 = (TimeSpan)district["max_day_stop_time_1"];
-                                dt_max_day_start_time_1 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_start_time_1.Hours, ts_max_day_start_time_1.Minutes, ts_max_day_start_time_1.Seconds);
-                                dt_max_day_stop_time_1 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_stop_time_1.Hours, ts_max_day_stop_time_1.Minutes, ts_max_day_stop_time_1.Seconds);
-                                TimeSpan ts_max_day_start_time_2 = (TimeSpan)district["max_day_start_time_2"];
-                                TimeSpan ts_max_day_stop_time_2 = (TimeSpan)district["max_day_stop_time_2"];
-                                dt_max_day_start_time_2 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_start_time_2.Hours, ts_max_day_start_time_2.Minutes, ts_max_day_start_time_2.Seconds);
-                                dt_max_day_stop_time_2 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_stop_time_2.Hours, ts_max_day_stop_time_2.Minutes, ts_max_day_stop_time_2.Seconds);
-                                TimeSpan ts_max_day_start_time_3 = (TimeSpan)district["max_day_start_time_3"];
-                                TimeSpan ts_max_day_stop_time_3 = (TimeSpan)district["max_day_stop_time_3"];
-                                dt_max_day_start_time_3 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_start_time_3.Hours, ts_max_day_start_time_3.Minutes, ts_max_day_start_time_3.Seconds);
-                                dt_max_day_stop_time_3 = new DateTime(current_day.Year, current_day.Month, current_day.Day,
-                                    ts_max_day_stop_time_3.Hours, ts_max_day_stop_time_3.Minutes, ts_max_day_stop_time_3.Seconds);
-                            }
+                            DateTime dt_max_day_start_time = new DateTime(current_day.Year, current_day.Month, current_day.Day, 0, 0, 0);
+                            DateTime dt_max_day_stop_time = new DateTime(current_day.Year, current_day.Month, current_day.Day, 23, 59, 59);
                             // Calcolo la minima notturna e variabili collegate                   
                             double min_night = double.NaN;
                             double real_leakage = double.NaN;
@@ -430,9 +376,7 @@ namespace WetLib
                             // Calcolo le massime giornaliere
                             double max_day = double.NaN;
                             dt = wet_db.ExecCustomQuery("SELECT * FROM data_districts WHERE `districts_id_districts` = " + id_district.ToString() +
-                                " AND ((`timestamp` >= '" + dt_max_day_start_time_1.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_max_day_stop_time_1.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "')" +
-                                " OR (`timestamp` >= '" + dt_max_day_start_time_2.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_max_day_stop_time_2.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "')" +
-                                " OR (`timestamp` >= '" + dt_max_day_start_time_3.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_max_day_stop_time_3.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "')) ORDER BY `timestamp` ASC");
+                                " AND (`timestamp` >= '" + dt_max_day_start_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_max_day_stop_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "') ORDER BY `timestamp` ASC");
                             if (dt.Rows.Count > 0)
                                 max_day = WetStatistics.GetMax(WetUtility.GetDoubleValuesFromColumn(dt, "value"));
                             if (!double.IsNaN(max_day))

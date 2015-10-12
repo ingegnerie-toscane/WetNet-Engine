@@ -266,37 +266,7 @@ namespace WetLib
             /// <summary>
             /// Orario di fine fascia oraria per analisi delle minime notturne
             /// </summary>
-            public DateTime min_night_stop_time;
-
-            /// <summary>
-            /// Orario di inizio fascia oraria per analisi delle massime giornaliere (fascia 1)
-            /// </summary>
-            public DateTime max_day_start_time_slot_1;
-
-            /// <summary>
-            /// Orario di inizio fine oraria per analisi delle massime giornaliere (fascia 1)
-            /// </summary>
-            public DateTime max_day_stop_time_slot_1;
-
-            /// <summary>
-            /// Orario di inizio fascia oraria per analisi delle massime giornaliere (fascia 2)
-            /// </summary>
-            public DateTime max_day_start_time_slot_2;
-
-            /// <summary>
-            /// Orario di inizio fine oraria per analisi delle massime giornaliere (fascia 2)
-            /// </summary>
-            public DateTime max_day_stop_time_slot_2;
-
-            /// <summary>
-            /// Orario di inizio fascia oraria per analisi delle massime giornaliere (fascia 3)
-            /// </summary>
-            public DateTime max_day_start_time_slot_3;
-
-            /// <summary>
-            /// Orario di inizio fine oraria per analisi delle massime giornaliere (fascia 3)
-            /// </summary>
-            public DateTime max_day_stop_time_slot_3;
+            public DateTime min_night_stop_time;            
         }
 
         /// <summary>
@@ -526,12 +496,6 @@ namespace WetLib
 
             settings.min_night_start_time = WetUtility.GetDateTimeFromTime(root.Element("MinNightDefaultStartTime").Value);
             settings.min_night_stop_time = WetUtility.GetDateTimeFromTime(root.Element("MinNightDefaultStopTime").Value);
-            settings.max_day_start_time_slot_1 = WetUtility.GetDateTimeFromTime(root.Element("MaxDayDefaultStartTimeSlot1").Value);
-            settings.max_day_stop_time_slot_1 = WetUtility.GetDateTimeFromTime(root.Element("MaxDayDefaultStopTimeSlot1").Value);
-            settings.max_day_start_time_slot_2 = WetUtility.GetDateTimeFromTime(root.Element("MaxDayDefaultStartTimeSlot2").Value);
-            settings.max_day_stop_time_slot_2 = WetUtility.GetDateTimeFromTime(root.Element("MaxDayDefaultStopTimeSlot2").Value);
-            settings.max_day_start_time_slot_3 = WetUtility.GetDateTimeFromTime(root.Element("MaxDayDefaultStartTimeSlot3").Value);
-            settings.max_day_stop_time_slot_3 = WetUtility.GetDateTimeFromTime(root.Element("MaxDayDefaultStopTimeSlot3").Value);
 
             return settings;
         }

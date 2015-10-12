@@ -70,6 +70,27 @@ namespace WetLib
         #region Enumerazioni
 
         /// <summary>
+        /// Versioni supportate del modello del DB WetNet
+        /// </summary>
+        public enum WetDBModelVersion
+        {
+            /// <summary>
+            /// Sconosciuto, condizione non prevista!!!
+            /// </summary>
+            UNKNOWN = 0,
+
+            /// <summary>
+            /// Versione 1.0
+            /// </summary>
+            V1_0 = 1,
+
+            /// <summary>
+            /// Versione 2.0
+            /// </summary>
+            V2_0 = 2
+        }
+
+        /// <summary>
         /// Tipo di server
         /// </summary>
         public enum DBServerTypes : int
@@ -182,7 +203,20 @@ namespace WetLib
 
         #region Variabili globali
 
+        /// <summary>
+        /// Stringa di connessione
+        /// </summary>
         readonly string connection_string;
+
+        /// <summary>
+        /// ODBC DSN
+        /// </summary>
+        readonly string odbc_dsn;
+
+        /// <summary>
+        /// Versione del motore di WetNet
+        /// </summary>
+        public static WetDBModelVersion wetdb_model_version = WetDBModelVersion.UNKNOWN;
 
         #endregion
 
@@ -197,6 +231,7 @@ namespace WetLib
         /// <param name="mysql_required">Indica se il database deve essere MySQL</param>
         public WetDBConn(string odbc_dsn, string username, string password, bool mysql_required)
         {
+            this.odbc_dsn = odbc_dsn;
             connection_string = "DSN=" + odbc_dsn;
             if (username != null)
                 connection_string += "; Uid=" + username;
@@ -205,6 +240,28 @@ namespace WetLib
             // Controllo che faccia riferimento ad un database MySQL
             if (mysql_required && (GetServerType() != DBServerTypes.MYSQL))
                 throw new Exception("MySQL ODBC Driver requested!");
+            // Controllo se il modello DB è assegnato
+            if (wetdb_model_version == WetDBModelVersion.UNKNOWN)
+            {
+                try
+                {
+                    // Controllo se si tratta del DSN di WetNet
+                    WetConfig cfg = new WetConfig();
+                    if (cfg.GetWetDBDSN().ToLower() == odbc_dsn.ToLower())
+                    {
+                        // Aquisisco le tabelle del modello DB
+                        string[] tables = GetTables();
+                        if (tables.Any(x => x == "measures_has_measures"))
+                            wetdb_model_version = WetDBModelVersion.V2_0;
+                        else
+                            wetdb_model_version = WetDBModelVersion.V1_0;                           
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+            }
         }
 
         #endregion
@@ -600,16 +657,55 @@ namespace WetLib
         /// <returns></returns>
         public ProviderType GetProvider()
         {
-            ProviderType provider;
+            ProviderType provider = ProviderType.GENERIC_MYSQL;
 
-            if (connection_string.ToLower().Contains("archestra"))
-                provider = ProviderType.ARCHESTRA_SQL;
-            else if (connection_string.ToLower().Contains("ifix"))
-                provider = ProviderType.IFIX_SQL;
-            else if (connection_string.ToLower().Contains("excel"))
-                provider = ProviderType.EXCEL;
-            else
-                provider = ProviderType.GENERIC_MYSQL;
+            if (wetdb_model_version == WetDBModelVersion.V1_0)
+            {
+                if (connection_string.ToLower().Contains("archestra"))
+                    provider = ProviderType.ARCHESTRA_SQL;
+                else if (connection_string.ToLower().Contains("ifix"))
+                    provider = ProviderType.IFIX_SQL;
+                else if (connection_string.ToLower().Contains("excel"))
+                    provider = ProviderType.EXCEL;
+                else
+                    provider = ProviderType.GENERIC_MYSQL;
+            }
+            else if (wetdb_model_version == WetDBModelVersion.V2_0)
+            {
+                try
+                {
+                    DataTable dt = ExecCustomQuery("SELECT DISTINCT db_type FROM connections WHERE odbc_dsn = " + odbc_dsn);
+                    if (dt.Rows.Count == 1)
+                    {
+                        int db_type_id = Convert.ToInt32(dt.Rows[0]["db_type"]);
+                        switch (db_type_id)
+                        {
+                            default:
+                            case (int)(ProviderType.GENERIC_MYSQL):
+                                provider = ProviderType.GENERIC_MYSQL;
+                                break;
+
+                            case (int)(ProviderType.ARCHESTRA_SQL):
+                                provider = ProviderType.ARCHESTRA_SQL;
+                                break;
+
+                            case (int)(ProviderType.IFIX_SQL):
+                                provider = ProviderType.IFIX_SQL;
+                                break;
+
+                            case (int)(ProviderType.EXCEL):
+                                provider = ProviderType.EXCEL;
+                                break;
+                        }
+                    }
+                    else
+                        throw new Exception("Can't query ODBC DSN provider!");
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+            }
 
             return provider;
         }

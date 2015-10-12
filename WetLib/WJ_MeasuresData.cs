@@ -182,11 +182,10 @@ namespace WetLib
                     DateTime start_date = Convert.ToDateTime(measure["update_timestamp"]);
                     double energy_specific_content = Convert.ToDouble(measure["energy_specific_content"]) * 3.6d;   // KWh/mc -> KW/(l/s)
                     // Popolo le coordinate database per la misura
-                    MeasureDBCoord_Struct measure_coord;
-                    int dsn_id = Convert.ToInt32(measure["connections_id_odbcdsn"]);
-                    measure_coord.odbc_connection = Convert.ToString(connections.Rows.Find(dsn_id)["odbc_dsn"]);
-                    measure_coord.username = (connections.Rows.Find(dsn_id)["username"] == DBNull.Value ? null : Convert.ToString(connections.Rows.Find(dsn_id)["username"]));
-                    measure_coord.password = (connections.Rows.Find(dsn_id)["password"] == DBNull.Value ? null : Convert.ToString(connections.Rows.Find(dsn_id)["password"]));                    
+                    MeasureDBCoord_Struct measure_coord;                    
+                    measure_coord.odbc_connection = Convert.ToString(connections.Rows.Find(id_odbc_dsn)["odbc_dsn"]);
+                    measure_coord.username = (connections.Rows.Find(id_odbc_dsn)["username"] == DBNull.Value ? null : Convert.ToString(connections.Rows.Find(id_odbc_dsn)["username"]));
+                    measure_coord.password = (connections.Rows.Find(id_odbc_dsn)["password"] == DBNull.Value ? null : Convert.ToString(connections.Rows.Find(id_odbc_dsn)["password"]));                    
                     measure_coord.table_name = Convert.ToString(measure["table_name"]);
                     measure_coord.timestamp_column = Convert.ToString(measure["table_timestamp_column"]);
                     measure_coord.value_column = Convert.ToString(measure["table_value_column"]);
@@ -249,10 +248,12 @@ namespace WetLib
 
                         DataTable dest = new DataTable();
                         dest.Columns.Add("timestamp", typeof(DateTime));
-                        dest.Columns.Add("reliable", typeof(bool));
+                        if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            dest.Columns.Add("reliable", typeof(bool));
                         dest.Columns.Add("value", typeof(double));
                         dest.Columns.Add("measures_id_measures", typeof(int));
-                        dest.Columns.Add("measures_connections_id_odbcdsn", typeof(int));
+                        if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            dest.Columns.Add("measures_connections_id_odbcdsn", typeof(int));
 
                         /************************************************************/
                         /*** INIZIO PROCEDURA DI INTERPOLAZIONE LINEARE DEI PUNTI ***/
@@ -285,7 +286,12 @@ namespace WetLib
 
                         // Riconversione in tabella dati
                         for (int ii = 0; ii < interpolated.Count; ii++)
-                            dest.Rows.Add(interpolated.ElementAt(ii).Key, 1, interpolated.ElementAt(ii).Value, id_measure, id_odbc_dsn);                        
+                        {
+                            if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                                dest.Rows.Add(interpolated.ElementAt(ii).Key, 1, interpolated.ElementAt(ii).Value, id_measure, id_odbc_dsn);
+                            else if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V2_0)
+                                dest.Rows.Add(interpolated.ElementAt(ii).Key, interpolated.ElementAt(ii).Value, id_measure);
+                        }
 
                         /**********************************************************/
                         /*** FINE PROCEDURA DI INTERPOLAZIONE LINEARE DEI PUNTI ***/
@@ -301,10 +307,12 @@ namespace WetLib
                         // Creo la tabella di appoggio
                         DataTable measures_energy_profile = new DataTable();
                         measures_energy_profile.Columns.Add("timestamp", typeof(DateTime));
-                        measures_energy_profile.Columns.Add("reliable", typeof(bool));
+                        if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            measures_energy_profile.Columns.Add("reliable", typeof(bool));
                         measures_energy_profile.Columns.Add("value", typeof(double));
                         measures_energy_profile.Columns.Add("measures_id_measures", typeof(int));
-                        measures_energy_profile.Columns.Add("measures_connections_id_odbcdsn", typeof(int));
+                        if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            measures_energy_profile.Columns.Add("measures_connections_id_odbcdsn", typeof(int));
                         // Ciclo per tutti i campioni di portata
                         foreach (DataRow dr in dest.Rows)
                         {
@@ -313,10 +321,12 @@ namespace WetLib
 
                             // Lo popolo calcolando la potenza associata
                             mep_r["timestamp"] = dr["timestamp"];
-                            mep_r["reliable"] = dr["reliable"];
+                            if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                                mep_r["reliable"] = dr["reliable"];
                             mep_r["value"] = Convert.ToDouble(dr["value"]) * energy_specific_content;
                             mep_r["measures_id_measures"] = dr["measures_id_measures"];
-                            mep_r["measures_connections_id_odbcdsn"] = dr["measures_connections_id_odbcdsn"];
+                            if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                                mep_r["measures_connections_id_odbcdsn"] = dr["measures_connections_id_odbcdsn"];
 
                             // Lo inserisco nella tabella temporanea
                             measures_energy_profile.Rows.Add(mep_r);
@@ -397,13 +407,22 @@ namespace WetLib
                     break;
 
                 case WetDBConn.ProviderType.EXCEL:
+                    string ts, val;
+                    if (measure_coord.timestamp_column.Contains(" "))
+                        ts = "\"" + measure_coord.timestamp_column + "\"";
+                    else
+                        ts = measure_coord.timestamp_column;
+                    if (measure_coord.value_column.Contains(" "))
+                        val = "\"" + measure_coord.value_column + "\"";
+                    else
+                        val = measure_coord.value_column;
                     query = "SELECT ";
                     if (num_records > 0)
                         query += "TOP " + num_records.ToString() + " ";
-                    query += measure_coord.timestamp_column + ", " + measure_coord.value_column + " FROM " + measure_coord.table_name +
-                        " WHERE (" + measure_coord.timestamp_column + " > #" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
-                                "# AND " + measure_coord.timestamp_column + " <= #" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "#)" +
-                        " ORDER BY " + measure_coord.timestamp_column + " " + (order == WetDBConn.OrderTypes.ASC ? "ASC" : "DESC");
+                    query += ts + ", " + val + " FROM [" + measure_coord.table_name + "$]" +
+                        " WHERE (" + ts + " > #" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                                "# AND " + ts + " <= #" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "#)" +
+                        " ORDER BY " + ts + " " + (order == WetDBConn.OrderTypes.ASC ? "ASC" : "DESC");
                     break;
 
                 case WetDBConn.ProviderType.GENERIC_MYSQL:
