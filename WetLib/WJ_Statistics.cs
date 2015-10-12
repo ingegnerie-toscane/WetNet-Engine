@@ -486,7 +486,7 @@ namespace WetLib
                                 // Riempio un profilo giornaliero "fittizio"                            
                                 for (int jj = 0; jj < (60 / config.interpolation_time * 24); jj++)
                                 {
-                                    dt3.Rows.Add(tmp_datetime, aznp);
+                                    dt3.Rows.Add(tmp_datetime, aznp < 1.0d ? 1.0d : aznp);
                                     tmp_datetime = tmp_datetime.AddMinutes(config.interpolation_time);
                                 }
                                 // Imposto la media delle medie
