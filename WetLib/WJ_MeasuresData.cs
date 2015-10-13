@@ -246,6 +246,10 @@ namespace WetLib
                             samples = cnt_tbl_q.Copy();
                         }
 
+                        // Se la tabella samples non contiene campioni continuo
+                        if (samples.Rows.Count == 0)
+                            continue;
+
                         DataTable dest = new DataTable();
                         dest.Columns.Add("timestamp", typeof(DateTime));
                         if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
@@ -407,22 +411,13 @@ namespace WetLib
                     break;
 
                 case WetDBConn.ProviderType.EXCEL:
-                    string ts, val;
-                    if (measure_coord.timestamp_column.Contains(" "))
-                        ts = "\"" + measure_coord.timestamp_column + "\"";
-                    else
-                        ts = measure_coord.timestamp_column;
-                    if (measure_coord.value_column.Contains(" "))
-                        val = "\"" + measure_coord.value_column + "\"";
-                    else
-                        val = measure_coord.value_column;
                     query = "SELECT ";
                     if (num_records > 0)
                         query += "TOP " + num_records.ToString() + " ";
-                    query += ts + ", " + val + " FROM [" + measure_coord.table_name + "$]" +
-                        " WHERE (" + ts + " > #" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
-                                "# AND " + ts + " <= #" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "#)" +
-                        " ORDER BY " + ts + " " + (order == WetDBConn.OrderTypes.ASC ? "ASC" : "DESC");
+                    query += "[" + measure_coord.timestamp_column + "], [" + measure_coord.value_column + "] FROM [" + measure_coord.table_name + "$]" +
+                        " WHERE (CDate([" + measure_coord.timestamp_column + "]) > #" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                                "# AND CDate([" + measure_coord.timestamp_column + "]) <= #" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "#)" +
+                        " ORDER BY [" + measure_coord.timestamp_column + "] " + (order == WetDBConn.OrderTypes.ASC ? "ASC" : "DESC");
                     break;
 
                 case WetDBConn.ProviderType.GENERIC_MYSQL:
