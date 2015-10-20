@@ -71,7 +71,16 @@ namespace WetLib
         /// <summary>
         /// Contatore progressivo
         /// </summary>
-        COUNTER = 2
+        COUNTER = 2,
+
+        /// <summary>
+        /// Stato digitale
+        /// </summary>
+        /// <remarks>
+        /// Viene archiviato come un <c>double</c> con solo due valori
+        /// possibili: 0.0d e 1.0d
+        /// </remarks>
+        DIGITAL_STATE = 3
     }
 
     /// <summary>

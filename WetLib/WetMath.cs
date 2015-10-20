@@ -56,8 +56,9 @@ namespace WetLib
         /// </summary>
         /// <param name="interpolation_time">Tempo di interpolazione</param>
         /// <param name="serie">Serie di valori</param>
+        /// <param name="measure_type">Tipo della misura</param>
         /// <returns>Serie interpolata</returns>
-        public static Dictionary<DateTime, double> LinearInterpolation(TimeSpan interpolation_time, Dictionary<DateTime, double> serie)
+        public static Dictionary<DateTime, double> LinearInterpolation(TimeSpan interpolation_time, Dictionary<DateTime, double> serie, MeasureTypes measure_type)
         {
             Dictionary<DateTime, double> return_serie = new Dictionary<DateTime, double>();
 
@@ -66,8 +67,9 @@ namespace WetLib
             {
                 DateTime start = serie.ElementAt(0).Key;
                 DateTime stop = start + interpolation_time;
+
                 // Loop sui campioni
-                for (int ii = 0, jj = 0; ii < serie.Count - 1;)
+                for (int ii = 0, jj = 0; ii < serie.Count;)
                 {
                     if (serie.ElementAt(ii).Key >= stop)
                     {
@@ -78,6 +80,22 @@ namespace WetLib
                         double x1 = Convert.ToDouble(serie.ElementAt(ii).Key.Ticks);
                         double x = Convert.ToDouble(stop.Ticks);
                         double y = ValidateDouble((((y1 - y0) * (x - x0)) / (x1 - x0)) + y0);
+                        if (measure_type == MeasureTypes.DIGITAL_STATE)
+                        {
+                            if ((y != 0.0d) && (y != 1.0d))
+                            {
+                                // Controllo di congruenza valore precedente
+                                if (y0 < 0.0d)
+                                    y0 = 0.0d;
+                                else if (y0 > 1.0d)
+                                    y0 = 1.0d;
+                                else
+                                    y0 = Math.Round(y0);
+                                
+                                // Assegno al valore attuale lo stato precedente
+                                y = y0;
+                            }
+                        }
                         // Aggiungo il valore
                         return_serie.Add(stop, y);
                         // Aggiorno i contatori
@@ -100,8 +118,10 @@ namespace WetLib
         /// <param name="serie">Tabella con la serie</param>
         /// <param name="timestamp_column">Nome della colonna con il timestamp</param>
         /// <param name="value_column">Nome della colonna con il valore</param>
+        /// <param name="fixed_value">Valore fittizio da addizionare</param>
+        /// <param name="is_real">Indica se la misura è reale o fittizzia</param>
         /// <returns>Dizionario restituito</returns>
-        public static Dictionary<DateTime, double> DataTable2Dictionary(DataTable serie, string timestamp_column, string value_column)
+        public static Dictionary<DateTime, double> DataTable2Dictionary(DataTable serie, string timestamp_column, string value_column, double fixed_value, bool is_real)
         {
             Dictionary<DateTime, double> return_serie = new Dictionary<DateTime, double>();
 
@@ -116,7 +136,10 @@ namespace WetLib
                     if (return_serie.ContainsKey(timestamp))
                         continue;
                     // Li aggiungo al dizionario
-                    return_serie.Add(timestamp, value);
+                    if (is_real)
+                        return_serie.Add(timestamp, ValidateDouble(value) + ValidateDouble(fixed_value));
+                    else
+                        return_serie.Add(timestamp, ValidateDouble(value));
                 }
             }
             catch

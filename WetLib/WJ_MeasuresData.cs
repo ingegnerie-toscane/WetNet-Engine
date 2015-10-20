@@ -181,6 +181,7 @@ namespace WetLib
                     bool reliable = Convert.ToBoolean(measure["reliable"]);
                     DateTime start_date = Convert.ToDateTime(measure["update_timestamp"]);
                     double energy_specific_content = Convert.ToDouble(measure["energy_specific_content"]) * 3.6d;   // KWh/mc -> KW/(l/s)
+                    double fixed_value = Convert.ToDouble(measure["fixed_value"] == DBNull.Value ? 0.0d : measure["fixed_value"]);                    
                     // Popolo le coordinate database per la misura
                     MeasureDBCoord_Struct measure_coord;                    
                     measure_coord.odbc_connection = Convert.ToString(connections.Rows.Find(id_odbc_dsn)["odbc_dsn"]);
@@ -192,10 +193,35 @@ namespace WetLib
                     measure_coord.relational_id_column = Convert.ToString(measure["table_relational_id_column"]);
                     measure_coord.relational_id_value = Convert.ToString(measure["table_relational_id_value"]);
                     measure_coord.relational_id_type = (WetDBConn.PrimaryKeyColumnTypes)Convert.ToInt32(measure["table_relational_id_type"]);
-                    // Istanzio la connessione al database sorgente
-                    WetDBConn source_db = new WetDBConn(measure_coord.odbc_connection, measure_coord.username, measure_coord.password, false);
-                    // Estraggo il timestamp dell'ultimo valore scritto nel database sorgente
-                    DateTime last_source = GetLastSourceSample(source_db, start_date, measure_coord);
+                    // Controllo se la misura è reale o fittizia
+                    bool is_real = true;
+                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                    {
+                        if ((mtype == MeasureTypes.FLOW) || (mtype == MeasureTypes.PRESSURE))
+                        {
+                            if ((measure_coord.table_name.ToLower() == "fake_table") &&
+                                (measure_coord.timestamp_column.ToLower() == "fake_timestamp") &&
+                                (measure_coord.value_column.ToLower() == "fake_value"))
+                            {
+                                is_real = false;
+                            }
+                        }
+                    }
+                    // Inizio l'acquisiszione dei dati
+                    DateTime last_source = DateTime.MinValue;
+                    WetDBConn source_db = null;
+                    if (is_real)
+                    {
+                        // Istanzio la connessione al database sorgente
+                        source_db = new WetDBConn(measure_coord.odbc_connection, measure_coord.username, measure_coord.password, false);
+                        // Estraggo il timestamp dell'ultimo valore scritto nel database sorgente
+                        last_source = GetLastSourceSample(source_db, start_date, measure_coord);
+                    }
+                    else
+                    {
+                        // In una misura fittizia ho sempre tutti i dati ;)
+                        last_source = DateTime.Now;
+                    }
                     // Estraggo il timestamp dell'ultimo valore scritto nel database WetNet
                     DateTime last_dest = GetLastDestSample(id_measure);
                     if (last_dest == DateTime.MinValue)
@@ -203,49 +229,63 @@ namespace WetLib
                     // Controllo se ci sono campioni da acquisire
                     if (last_dest < last_source)
                     {
-                        // Acquisisco tutti i campioni da scrivere                        
-                        DataTable samples = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, last_dest, DateTime.Now, WetDBConn.OrderTypes.ASC, MAX_RECORDS_IN_QUERY));
-                        // Gestione dei contatori volumetrici
-                        if (mtype == MeasureTypes.COUNTER)
-                        {                            
-                            // Acquisisco il campione precedente al primo della tabella samples
-                            DataTable cnt_tbl = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, WetDBConn.START_DATE, last_dest.Subtract(new TimeSpan(0, 0, 0, 1)), WetDBConn.OrderTypes.DESC, 1));
-                            // Lo inserisco nella tabella samples
-                            if (cnt_tbl.Rows.Count > 0)
-                            {
-                                samples.ImportRow(cnt_tbl.Rows[0]);
-                                DataView dv = samples.DefaultView;
-                                dv.Sort = "[" + cnt_tbl.Columns[0].ColumnName + "] ASC";
-                                samples = dv.ToTable();
-                            }                                                                                   
-                            // Creo una tabella di appoggio temporanea
-                            DataTable cnt_tbl_q = samples.Clone();
-                            // Ciclo per tutti i campioni di samples
-                            DateTime now_dt, prec_dt;
-                            double now_v, prec_v, liters, flow, seconds;
-                            for (int ii = 0; ii < samples.Rows.Count; ii++)
-                            {
-                                if (ii == 0)
-                                    continue;   // Salta il primo record
+                        DataTable samples;
 
-                                // Acquisisco i valori attuali e precedenti
-                                prec_dt = Convert.ToDateTime(samples.Rows[ii - 1][0]);
-                                now_dt = Convert.ToDateTime(samples.Rows[ii][0]);
-                                prec_v = Convert.ToDouble(samples.Rows[ii - 1][1]);
-                                now_v = Convert.ToDouble(samples.Rows[ii][1]);
-                                // Calcolo la differenza in litri
-                                seconds = (now_dt - prec_dt).TotalSeconds;
-                                liters = (now_v * 1000) - (prec_v * 1000);
-                                // Calcolo la portata
-                                flow = liters / seconds;
-                                // Popolo la tabella
-                                cnt_tbl_q.Rows.Add(now_dt, flow);
+                        if (is_real)
+                        {
+                            // Acquisisco tutti i campioni da scrivere                        
+                            samples = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, last_dest, DateTime.Now, WetDBConn.OrderTypes.ASC, MAX_RECORDS_IN_QUERY));
+                            // Gestione dei contatori volumetrici
+                            if (mtype == MeasureTypes.COUNTER)
+                            {
+                                // Acquisisco il campione precedente al primo della tabella samples
+                                DataTable cnt_tbl = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, WetDBConn.START_DATE, last_dest.Subtract(new TimeSpan(0, 0, 0, 1)), WetDBConn.OrderTypes.DESC, 1));
+                                // Lo inserisco nella tabella samples
+                                if (cnt_tbl.Rows.Count > 0)
+                                {
+                                    samples.ImportRow(cnt_tbl.Rows[0]);
+                                    DataView dv = samples.DefaultView;
+                                    dv.Sort = "[" + cnt_tbl.Columns[0].ColumnName + "] ASC";
+                                    samples = dv.ToTable();
+                                }
+                                // Creo una tabella di appoggio temporanea
+                                DataTable cnt_tbl_q = samples.Clone();
+                                // Ciclo per tutti i campioni di samples
+                                DateTime now_dt, prec_dt;
+                                double now_v, prec_v, liters, flow, seconds;
+                                for (int ii = 0; ii < samples.Rows.Count; ii++)
+                                {
+                                    if (ii == 0)
+                                        continue;   // Salta il primo record
+
+                                    // Acquisisco i valori attuali e precedenti
+                                    prec_dt = Convert.ToDateTime(samples.Rows[ii - 1][0]);
+                                    now_dt = Convert.ToDateTime(samples.Rows[ii][0]);
+                                    prec_v = Convert.ToDouble(samples.Rows[ii - 1][1]);
+                                    now_v = Convert.ToDouble(samples.Rows[ii][1]);
+                                    // Calcolo la differenza in litri
+                                    seconds = (now_dt - prec_dt).TotalSeconds;
+                                    liters = (now_v * 1000) - (prec_v * 1000);
+                                    // Calcolo la portata
+                                    flow = liters / seconds;
+                                    // Popolo la tabella
+                                    cnt_tbl_q.Rows.Add(now_dt, flow);
+                                }
+                                // Assegno la tabella temporanea a 'samples'
+                                samples.Clear();
+                                samples = cnt_tbl_q.Copy();
                             }
-                            // Assegno la tabella temporanea a 'samples'
-                            samples.Clear();
-                            samples = cnt_tbl_q.Copy();
                         }
-
+                        else
+                        {
+                            samples = new DataTable();
+                            samples.Columns.Add(measure_coord.timestamp_column, typeof(DateTime));
+                            samples.Columns.Add(measure_coord.value_column, typeof(double));
+                            samples.Rows.Add(last_dest.Add(interpolation_time), fixed_value);
+                            // Nel mezzo interpolerò...
+                            samples.Rows.Add(DateTime.Now, fixed_value);
+                        }
+                        
                         // Se la tabella samples non contiene campioni continuo
                         if (samples.Rows.Count == 0)
                             continue;
@@ -285,8 +325,9 @@ namespace WetLib
                         samples.Rows.InsertAt(new_row, 0);
 
                         // Interpolazione lineare
-                        Dictionary<DateTime, double> interpolated = WetMath.LinearInterpolation(interpolation_time, 
-                            WetMath.DataTable2Dictionary(samples, measure_coord.timestamp_column, measure_coord.value_column));
+                        Dictionary<DateTime, double> interpolated = WetMath.LinearInterpolation(interpolation_time,
+                            WetMath.DataTable2Dictionary(samples, measure_coord.timestamp_column, measure_coord.value_column, fixed_value, is_real),
+                            mtype);
 
                         // Riconversione in tabella dati
                         for (int ii = 0; ii < interpolated.Count; ii++)
