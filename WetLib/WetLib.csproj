@@ -67,7 +67,6 @@
     <Content Include="LICENSE.txt" />
     <Content Include="WetEngine.config.xml">
       <SubType>Designer</SubType>
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
