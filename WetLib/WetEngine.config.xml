@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<!--
+Configuration file for WetNet, you MUST to configure all fields marked as '### MANDATORY ###'
+-->
+<WetEngine>
+  <!-- ODBC DSN of WetNet database -->
+  <!-- ### MANDATORY ### -->
+  <WetDBDSN></WetDBDSN>
+  <!-- Porta TCP di ascolto -->
+  <WebServicePort></WebServicePort>
+  <!-- SMTP server for events reports -->
+  <!-- ### MANDATORY ### or leave empty -->
+  <SMTPServer></SMTPServer>
+  <!-- SMTP TCP server port (default = 25) -->
+  <SMTPServerPort></SMTPServerPort>
+  <!-- SMTP server SSL protocol enable (0=disabled, 1=enabled) -->
+  <SMTPUseSSL>0</SMTPUseSSL>
+  <!-- SMTP server username -->
+  <SMTPServerUsername></SMTPServerUsername>
+  <!-- SMTP server password -->
+  <SMTPServerPassword></SMTPServerPassword>
+  <!-- Linear interpolation time of datas (minutes) -->
+  <InterpolationTimeMinutes>6</InterpolationTimeMinutes>
+  <!-- Default time slot start time for calculating the minimum night flow -->
+  <MinNightDefaultStartTime>04:30</MinNightDefaultStartTime>
+  <!-- Default time slot stop time for calculating the minimum night flow -->
+  <MinNightDefaultStopTime>05:30</MinNightDefaultStopTime>
+  <!-- Default time slot start time for calculating the maximum day flow (fascia 1) -->
+  <MaxDayDefaultStartTimeSlot1>07:50</MaxDayDefaultStartTimeSlot1>
+  <!-- Default time slot stop time for calculating the maximum day flow (fascia 1) -->
+  <MaxDayDefaultStopTimeSlot1>08:50</MaxDayDefaultStopTimeSlot1>
+  <!-- Default time slot start time for calculating the maximum day flow (fascia 2) -->
+  <MaxDayDefaultStartTimeSlot2>13:50</MaxDayDefaultStartTimeSlot2>
+  <!-- Default time slot stop time for calculating the maximum day flow (fascia 2) -->
+  <MaxDayDefaultStopTimeSlot2>15:50</MaxDayDefaultStopTimeSlot2>
+  <!-- Default time slot start time for calculating the maximum day flow (fascia 3) -->
+  <MaxDayDefaultStartTimeSlot3>19:50</MaxDayDefaultStartTimeSlot3>
+  <!-- Default time slot stop time for calculating the maximum day flow (fascia 3) -->
+  <MaxDayDefaultStopTimeSlot3>21:50</MaxDayDefaultStopTimeSlot3>
+  <!-- Job list -->
+  <Jobs>
+    <!-- ### MANDATORY ### or set 'enabled = "false"'-->
+    <Job name="Agent_LCF" enabled="false" execution_interval_minutes="6">
+      <!-- DSN del database LCF -->
+      <LCFDSN></LCFDSN>
+    </Job>
+    <!-- ### MANDATORY ### or set 'enabled = "false"'-->
+    <Job name="Agent_WetNetLinkBox" enabled="false" execution_interval_minutes="360">     
+      <FTPServerName></FTPServerName>
+      <FTPServerPort>21</FTPServerPort>
+      <FTPUseSSL>false</FTPUseSSL>
+      <FTPPassiveMode>true</FTPPassiveMode>
+      <FTPUserName></FTPUserName>
+      <FTPPassword></FTPPassword>
+      <FTPFolder></FTPFolder>      
+    </Job>
+    <!-- ### MANDATORY ### or set 'enabled = "false"'-->
+    <Job name="Agent_Primayer" enabled="false" execution_interval_minutes="360">
+      <FTPServerName></FTPServerName>
+      <FTPServerPort></FTPServerPort>
+      <FTPUseSSL>false</FTPUseSSL>
+      <FTPPassiveMode>true</FTPPassiveMode>
+      <FTPUserName></FTPUserName>
+      <FTPPassword></FTPPassword>
+      <FTPFolder></FTPFolder>
+    </Job>
+  </Jobs>
+</WetEngine> 
