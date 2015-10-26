@@ -88,6 +88,11 @@ namespace WetLib
         /// </summary>
         WJ_MeasuresAlarms wj_measures_alarms;
 
+        /// <summary>
+        /// Job per la gestione del server web
+        /// </summary>
+        WJ_WebService wj_web_service;
+
         #endregion
 
         #region Variabili globali
@@ -115,6 +120,7 @@ namespace WetLib
             wj_statistics = new WJ_Statistics();
             wj_events = new WJ_Events();
             wj_measures_alarms = new WJ_MeasuresAlarms();
+            wj_web_service = new WJ_WebService();
         }
 
         #endregion
@@ -135,6 +141,7 @@ namespace WetLib
             wj_statistics.Start();
             wj_events.Start();
             wj_measures_alarms.Start();
+            wj_web_service.Start();
         }
 
         /// <summary>
@@ -159,6 +166,7 @@ namespace WetLib
             wj_statistics.Stop();
             wj_events.Stop();
             wj_measures_alarms.Stop();
+            wj_web_service.Stop();
         }
 
         #endregion

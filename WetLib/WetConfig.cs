@@ -80,7 +80,12 @@ namespace WetLib
         /// Viene archiviato come un <c>double</c> con solo due valori
         /// possibili: 0.0d e 1.0d
         /// </remarks>
-        DIGITAL_STATE = 3
+        DIGITAL_STATE = 3,
+        
+        /// <summary>
+        /// Other analog measures
+        /// </summary>
+        OTHERS = 4
     }
 
     /// <summary>
@@ -461,6 +466,17 @@ namespace WetLib
             public int interpolation_time;
         }
 
+        /// <summary>
+        /// Struttura di configurazione per job servizio web
+        /// </summary>
+        public struct WJ_WebService_Config_Struct
+        {
+            /// <summary>
+            /// Porta di ascolto
+            /// </summary>
+            public int port;
+        }
+
         #endregion
 
         #region Istanze
@@ -621,6 +637,19 @@ namespace WetLib
             WJ_Statistics_Config_Struct cfg;
 
             cfg.interpolation_time = Convert.ToInt32(root.Element("InterpolationTimeMinutes").Value);
+
+            return cfg;
+        }
+
+        /// <summary>
+        /// Restituisce la struttura con la configurazione per il job del servizio web
+        /// </summary>
+        /// <returns>Struttura con la configurazione</returns>
+        public WJ_WebService_Config_Struct GetWJ_Webservice_Config()
+        {
+            WJ_WebService_Config_Struct cfg;
+
+            cfg.port = Convert.ToInt32(root.Element("WebServicePort").Value);
 
             return cfg;
         }

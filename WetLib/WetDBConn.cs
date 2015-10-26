@@ -196,7 +196,12 @@ namespace WetLib
             /// <summary>
             /// Microsoft Excel
             /// </summary>
-            EXCEL = 3
+            EXCEL = 3,
+
+            /// <summary>
+            /// Microsoft Access
+            /// </summary>
+            ACCESS = 4
         }
 
         #endregion
