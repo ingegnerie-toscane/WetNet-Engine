@@ -281,7 +281,7 @@ namespace WetLib
                             DateTime stop = DateTime.Now;
 
                             int id_measure = Convert.ToInt32(measure["id_measures"]);
-                            MeasureTypes mtype = (MeasureTypes)Convert.ToInt32(measure["type"]);
+                            MeterTypes mtype = (MeterTypes)Convert.ToInt32(measure["strumentation_type"]);
                             if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
                                 id_gis = Convert.ToString(measure["sap_code"]);
                             else
@@ -456,7 +456,7 @@ namespace WetLib
                             DateTime stop = DateTime.Now;
 
                             int id_measure = Convert.ToInt32(measure["id_measures"]);
-                            MeasureTypes mtype = (MeasureTypes)Convert.ToInt32(measure["type"]);
+                            MeterTypes mtype = (MeterTypes)Convert.ToInt32(measure["strumentation_type"]);
                             if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
                                 id_gis = Convert.ToString(measure["sap_code"]);
                             else
@@ -615,30 +615,58 @@ namespace WetLib
                 string ret = "<?xml version =\"1.0\"?>";
 
                 ret += "<Types>";
-                foreach (MeasureTypes mtype in Enum.GetValues(typeof(MeasureTypes)))
+                foreach (MeterTypes mtype in Enum.GetValues(typeof(MeterTypes)))
                 {
                     ret += "<Type id=\"" + ((int)mtype).ToString() + "\">";
                     switch (mtype)
                     {
-                        case MeasureTypes.FLOW:
-                            ret += "<InputType>Analog measure</InputType><Description>Flow measure</Description><EngineeringUnits>l/s</EngineeringUnits>";
-                            break;
-
-                        case MeasureTypes.PRESSURE:
-                            ret += "<InputType>Analog measure</InputType><Description>Pressure measure</Description><EngineeringUnits>bar</EngineeringUnits>";
-                            break;
-
-                        case MeasureTypes.COUNTER:
-                            ret += "<InputType>Digital pulse</InputType><Description>Converted flow measure</Description><EngineeringUnits>l/s</EngineeringUnits>";
-                            break;
-
-                        case MeasureTypes.DIGITAL_STATE:
-                            ret += "<InputType>Digital state</InputType><Description>Binary state</Description><EngineeringUnits>ON(1)/OFF(0)</EngineeringUnits>";
-                            break;
-
                         default:
-                        case MeasureTypes.OTHERS:
-                            ret += "<InputType>Unsupported analog measure</InputType><Description>Any type of analog measure</Description><EngineeringUnits>Any types</EngineeringUnits>";
+                        case MeterTypes.UNKNOWN:
+                            ret += "<InputType>Unknown measure</InputType><EngineeringUnits></EngineeringUnits>";
+                            break;
+
+                        case MeterTypes.LCF_FLOW_METER:
+                            ret += "<InputType>LCF flow meter</InputType><EngineeringUnits>l/s</EngineeringUnits>";
+                            break;
+
+                        case MeterTypes.MAGNETIC_FLOW_METER:
+                            ret += "<InputType>Magnetic flow meter</InputType><EngineeringUnits>l/s</EngineeringUnits>";
+                            break;
+
+                        case MeterTypes.ULTRASONIC_FLOW_METER:
+                            ret += "<InputType>Ultrasonic flow meter</InputType><EngineeringUnits>l/s</EngineeringUnits>";
+                            break;
+
+                        case MeterTypes.PRESSURE_METER:
+                            ret += "<InputType>Pressure measure</InputType><EngineeringUnits>bar</EngineeringUnits>";
+                            break;
+
+                        case MeterTypes.VOLUMETRIC_COUNTER:
+                            ret += "<InputType>Flow conversion from volumetric counter</InputType><EngineeringUnits>l/s</EngineeringUnits>";
+                            break;
+
+                        case MeterTypes.PUMP:
+                            ret += "<InputType>Pump status</InputType><EngineeringUnits>Digital state</EngineeringUnits>";
+                            break;
+
+                        case MeterTypes.VALVE_NO_REGULATION:
+                            ret += "<InputType>Valve with no regulation</InputType><EngineeringUnits>Digital state</EngineeringUnits>";
+                            break;
+
+                        case MeterTypes.VALVE_REGULATION:
+                            ret += "<InputType>Valve with regulation</InputType><EngineeringUnits>%</EngineeringUnits>";
+                            break;
+
+                        case MeterTypes.TANK:
+                            ret += "<InputType>Tank level</InputType><EngineeringUnits>mt</EngineeringUnits>";
+                            break;
+
+                        case MeterTypes.WELL:
+                            ret += "<InputType>Well level</InputType><EngineeringUnits>mt</EngineeringUnits>";
+                            break;
+
+                        case MeterTypes.MOTOR_FREQUENCY:
+                            ret += "<InputType>Motor frequency</InputType><EngineeringUnits>Hz</EngineeringUnits>";
                             break;
                     }
                     ret += "</Type>";

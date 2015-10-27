@@ -178,10 +178,20 @@ namespace WetLib
                     int id_measure = Convert.ToInt32(measure["id_measures"]);
                     int id_odbc_dsn = Convert.ToInt32(measure["connections_id_odbcdsn"]);
                     MeasureTypes mtype = (MeasureTypes)Convert.ToInt32(measure["type"]);
-                    bool reliable = Convert.ToBoolean(measure["reliable"]);
+                    bool reliable = true;
+                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                        reliable = Convert.ToBoolean(measure["reliable"]);
                     DateTime start_date = Convert.ToDateTime(measure["update_timestamp"]);
                     double energy_specific_content = Convert.ToDouble(measure["energy_specific_content"]) * 3.6d;   // KWh/mc -> KW/(l/s)
-                    double fixed_value = Convert.ToDouble(measure["fixed_value"] == DBNull.Value ? 0.0d : measure["fixed_value"]);                    
+                    double fixed_value = Convert.ToDouble(measure["fixed_value"] == DBNull.Value ? 0.0d : measure["fixed_value"]);
+                    double multiplication_factor = 1.0d;    // Valore di default (anche versione 1.0)
+                    if (WetDBConn.wetdb_model_version != WetDBConn.WetDBModelVersion.V1_0)
+                    {
+                        multiplication_factor = WetMath.ValidateDouble(Convert.ToDouble(measure["multiplication_factor"] == DBNull.Value ? 1.0d : measure["multiplication_factor"]));
+                        // Non è mai ammesso un valore pari a 0 che di fatto annullerebbe qualsiasi misura
+                        if (multiplication_factor == 0.0d)
+                            multiplication_factor = 1.0d;
+                    }
                     // Popolo le coordinate database per la misura
                     MeasureDBCoord_Struct measure_coord;                    
                     measure_coord.odbc_connection = Convert.ToString(connections.Rows.Find(id_odbc_dsn)["odbc_dsn"]);
@@ -194,7 +204,7 @@ namespace WetLib
                     measure_coord.relational_id_value = Convert.ToString(measure["table_relational_id_value"]);
                     measure_coord.relational_id_type = (WetDBConn.PrimaryKeyColumnTypes)Convert.ToInt32(measure["table_relational_id_type"]);
                     // Controllo se la misura è reale o fittizia
-                    bool is_real = true;
+                    MeasuresSourcesType mst = MeasuresSourcesType.REAL;
                     if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
                     {
                         if ((mtype == MeasureTypes.FLOW) || (mtype == MeasureTypes.PRESSURE))
@@ -203,14 +213,16 @@ namespace WetLib
                                 (measure_coord.timestamp_column.ToLower() == "fake_timestamp") &&
                                 (measure_coord.value_column.ToLower() == "fake_value"))
                             {
-                                is_real = false;
+                                mst = MeasuresSourcesType.FIXED;
                             }
                         }
                     }
+                    else
+                        mst = (MeasuresSourcesType)Convert.ToInt32(measure["source"]);
                     // Inizio l'acquisiszione dei dati
                     DateTime last_source = DateTime.MinValue;
                     WetDBConn source_db = null;
-                    if (is_real)
+                    if (mst == MeasuresSourcesType.REAL)
                     {
                         // Istanzio la connessione al database sorgente
                         source_db = new WetDBConn(measure_coord.odbc_connection, measure_coord.username, measure_coord.password, false);
@@ -231,7 +243,7 @@ namespace WetLib
                     {
                         DataTable samples;
 
-                        if (is_real)
+                        if (mst == MeasuresSourcesType.REAL)
                         {
                             // Acquisisco tutti i campioni da scrivere                        
                             samples = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, last_dest, DateTime.Now, WetDBConn.OrderTypes.ASC, MAX_RECORDS_IN_QUERY));
@@ -326,7 +338,7 @@ namespace WetLib
 
                         // Interpolazione lineare
                         Dictionary<DateTime, double> interpolated = WetMath.LinearInterpolation(interpolation_time,
-                            WetMath.DataTable2Dictionary(samples, measure_coord.timestamp_column, measure_coord.value_column, fixed_value, is_real),
+                            WetMath.DataTable2Dictionary(samples, measure_coord.timestamp_column, measure_coord.value_column, fixed_value, multiplication_factor, mst),
                             mtype);
 
                         // Riconversione in tabella dati

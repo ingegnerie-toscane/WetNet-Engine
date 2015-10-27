@@ -119,9 +119,10 @@ namespace WetLib
         /// <param name="timestamp_column">Nome della colonna con il timestamp</param>
         /// <param name="value_column">Nome della colonna con il valore</param>
         /// <param name="fixed_value">Valore fittizio da addizionare</param>
-        /// <param name="is_real">Indica se la misura è reale o fittizzia</param>
+        /// <param name="multiplication_factor">Fattore moltiplicativo</param>
+        /// <param name="mst">Sorgente della misura</param>
         /// <returns>Dizionario restituito</returns>
-        public static Dictionary<DateTime, double> DataTable2Dictionary(DataTable serie, string timestamp_column, string value_column, double fixed_value, bool is_real)
+        public static Dictionary<DateTime, double> DataTable2Dictionary(DataTable serie, string timestamp_column, string value_column, double fixed_value, double multiplication_factor, MeasuresSourcesType mst)
         {
             Dictionary<DateTime, double> return_serie = new Dictionary<DateTime, double>();
 
@@ -136,10 +137,10 @@ namespace WetLib
                     if (return_serie.ContainsKey(timestamp))
                         continue;
                     // Li aggiungo al dizionario
-                    if (is_real)
-                        return_serie.Add(timestamp, ValidateDouble(value) + ValidateDouble(fixed_value));
+                    if (mst == MeasuresSourcesType.REAL)
+                        return_serie.Add(timestamp, (ValidateDouble(value) * multiplication_factor) + ValidateDouble(fixed_value));
                     else
-                        return_serie.Add(timestamp, ValidateDouble(value));
+                        return_serie.Add(timestamp, ValidateDouble(value) * multiplication_factor);
                 }
             }
             catch

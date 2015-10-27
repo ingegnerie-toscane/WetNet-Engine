@@ -142,7 +142,37 @@ namespace WetLib
         /// <summary>
         /// Contatore volumetrico
         /// </summary>
-        VOLUMETRIC_COUNTER = 5
+        VOLUMETRIC_COUNTER = 5,
+
+        /// <summary>
+        /// Pompa
+        /// </summary>
+        PUMP = 6,
+
+        /// <summary>
+        /// Valvola motorizzata senza posizionatore
+        /// </summary>
+        VALVE_NO_REGULATION = 7,
+
+        /// <summary>
+        /// Valvola motorizzata con posizionatore
+        /// </summary>
+        VALVE_REGULATION = 8,
+
+        /// <summary>
+        /// Serbatoio
+        /// </summary>
+        TANK = 9,
+
+        /// <summary>
+        /// Pozzo
+        /// </summary>
+        WELL = 10,
+
+        /// <summary>
+        /// Frequenza del motore
+        /// </summary>
+        MOTOR_FREQUENCY = 11
     }
 
     /// <summary>
@@ -247,6 +277,35 @@ namespace WetLib
         /// Profilo statistico
         /// </summary>
         STATISTICAL_PROFILE = 4
+    }
+
+    /// <summary>
+    /// Tipo di misure acquisite
+    /// </summary>
+    /// <remarks>
+    /// Valido solo su modello DB >= 2.0
+    /// </remarks>
+    public enum MeasuresSourcesType : int
+    {
+        /// <summary>
+        /// Misure reali acquisite via ODBC
+        /// </summary>
+        REAL = 0,
+
+        /// <summary>
+        /// Misure con valore costante
+        /// </summary>
+        FIXED = 1,
+
+        /// <summary>
+        /// Misure calcolate
+        /// </summary>
+        CALCULATED = 2,
+
+        /// <summary>
+        /// Misure inserite manualmente dal campo (volumi)
+        /// </summary>
+        MANUALLY_INSERTED = 3
     }
 
     #endregion
