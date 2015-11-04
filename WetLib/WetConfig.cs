@@ -251,7 +251,7 @@ namespace WetLib
     /// <summary>
     /// Tipo di misura statistica per la generazione degli eventi
     /// </summary>
-    public enum DistrictStatisticMeasureType : int
+    public enum DistrictStatisticMeasureTypes : int
     {
         /// <summary>
         /// Minima notturna
@@ -285,7 +285,7 @@ namespace WetLib
     /// <remarks>
     /// Valido solo su modello DB >= 2.0
     /// </remarks>
-    public enum MeasuresSourcesType : int
+    public enum MeasuresSourcesTypes : int
     {
         /// <summary>
         /// Misure reali acquisite via ODBC
@@ -306,6 +306,32 @@ namespace WetLib
         /// Misure inserite manualmente dal campo (volumi)
         /// </summary>
         MANUALLY_INSERTED = 3
+    }
+
+    /// <summary>
+    /// Tipo di ingresso del misuratore
+    /// </summary>
+    public enum InputMeterTypes : int
+    {
+        /// <summary>
+        /// Sconosciuto
+        /// </summary>
+        UNKNOWN = 0,
+
+        /// <summary>
+        /// Ingresso analogico
+        /// </summary>
+        ANALOG_INPUT = 1,
+
+        /// <summary>
+        /// Ingresso impulsivo
+        /// </summary>
+        PULSE_INPUT = 2,
+
+        /// <summary>
+        /// Stato digitale
+        /// </summary>
+        DIGITAL_STATE = 3
     }
 
     #endregion

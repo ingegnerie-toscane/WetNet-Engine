@@ -137,15 +137,34 @@ namespace WetLib
                         // Acquisisco l'ID della misura
                         int id_measure = Convert.ToInt32(measure["id_measures"]);
                         int id_odbc_dsn = Convert.ToInt32(measure["connections_id_odbcdsn"]);
-                        // Leggo l'ultimo giorno scritto sulle statistiche
+                        // Leggo l'ultimo giorno scritto sulle statistiche giornaliere
                         DateTime first_day = DateTime.MinValue;
                         DataTable first_day_table = wet_db.ExecCustomQuery("SELECT * FROM measures_day_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `day` DESC LIMIT 1");
                         if (first_day_table.Rows.Count == 1)
-                            first_day = Convert.ToDateTime(first_day_table.Rows[0]["day"]);
+                            first_day = Convert.ToDateTime(first_day_table.Rows[0]["day"]);                        
+                        // Leggo l'ultimo giorno scritto sulle statistiche mensili e annuali
+                        DateTime first_month = DateTime.MinValue;
+                        DateTime first_year = DateTime.MinValue;
+                        if (WetDBConn.wetdb_model_version != WetDBConn.WetDBModelVersion.V1_0)
+                        {
+                            DataTable first_month_table = wet_db.ExecCustomQuery("SELECT * FROM measures_month_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `month` DESC LIMIT 1");
+                            if (first_month_table.Rows.Count == 1)
+                                first_month = Convert.ToDateTime(first_month_table.Rows[0]["month"]);                            
+                            DataTable first_year_table = wet_db.ExecCustomQuery("SELECT * FROM measures_year_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `year` DESC LIMIT 1");
+                            if (first_year_table.Rows.Count == 1)
+                                first_year = Convert.ToDateTime(first_year_table.Rows[0]["year"]);
+                        }
+                        // Effettuo analisi mensili e annuali
+                        if (WetDBConn.wetdb_model_version != WetDBConn.WetDBModelVersion.V1_0)
+                        {
+                            // Calcolo mese e anno precedenti
+                            DateTime prec_month = DateTime.Now.Date.AddMonths(-1);
+                            DateTime prec_year = DateTime.Now.Date.AddYears(-1);
+                        }
                         // Imposto il giorno di analisi (giorno precedente)
                         DateTime yesterday = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));
                         if (first_day == yesterday)
-                            continue;
+                            continue;        
                         // Controllo se ho almeno un campione per il giorno corrente, altrimenti esco
                         DataTable last_samples = wet_db.ExecCustomQuery("SELECT * FROM data_measures WHERE `measures_id_measures` = " + id_measure.ToString() + " AND `timestamp` >= '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' ORDER BY `timestamp` LIMIT 1");
                         if (last_samples.Rows.Count == 0)
@@ -299,6 +318,18 @@ namespace WetLib
                         DataTable first_day_table = wet_db.ExecCustomQuery("SELECT * FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `day` DESC LIMIT 1");
                         if (first_day_table.Rows.Count == 1)
                             first_day = Convert.ToDateTime(first_day_table.Rows[0]["day"]);
+                        // Leggo l'ultimo giorno scritto sulle statistiche mensili e annuali
+                        DateTime first_month = DateTime.MinValue;
+                        DateTime first_year = DateTime.MinValue;
+                        if (WetDBConn.wetdb_model_version != WetDBConn.WetDBModelVersion.V1_0)
+                        {
+                            DataTable first_month_table = wet_db.ExecCustomQuery("SELECT * FROM districts_month_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `month` DESC LIMIT 1");
+                            if (first_month_table.Rows.Count == 1)
+                                first_month = Convert.ToDateTime(first_month_table.Rows[0]["month"]);
+                            DataTable first_year_table = wet_db.ExecCustomQuery("SELECT * FROM districts_year_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `year` DESC LIMIT 1");
+                            if (first_year_table.Rows.Count == 1)
+                                first_year = Convert.ToDateTime(first_year_table.Rows[0]["year"]);
+                        }
                         // Imposto il giorno di analisi (giorno precedente)
                         DateTime yesterday = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));
                         if (first_day == yesterday)

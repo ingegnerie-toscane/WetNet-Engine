@@ -122,7 +122,7 @@ namespace WetLib
         /// <param name="multiplication_factor">Fattore moltiplicativo</param>
         /// <param name="mst">Sorgente della misura</param>
         /// <returns>Dizionario restituito</returns>
-        public static Dictionary<DateTime, double> DataTable2Dictionary(DataTable serie, string timestamp_column, string value_column, double fixed_value, double multiplication_factor, MeasuresSourcesType mst)
+        public static Dictionary<DateTime, double> DataTable2Dictionary(DataTable serie, string timestamp_column, string value_column, double fixed_value, double multiplication_factor, MeasuresSourcesTypes mst)
         {
             Dictionary<DateTime, double> return_serie = new Dictionary<DateTime, double>();
 
@@ -137,7 +137,7 @@ namespace WetLib
                     if (return_serie.ContainsKey(timestamp))
                         continue;
                     // Li aggiungo al dizionario
-                    if (mst == MeasuresSourcesType.REAL)
+                    if (mst == MeasuresSourcesTypes.REAL)
                         return_serie.Add(timestamp, (ValidateDouble(value) * multiplication_factor) + ValidateDouble(fixed_value));
                     else
                         return_serie.Add(timestamp, ValidateDouble(value) * multiplication_factor);

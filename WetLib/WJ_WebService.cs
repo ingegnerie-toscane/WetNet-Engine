@@ -24,19 +24,7 @@ namespace WetLib
         [ServiceContract]
         interface IWService
         {
-            #region Funzioni del modulo
-
-            [OperationContract]
-            [WebGet]
-            Stream GetGISMeasureValues(string id_gis, string start_date, string stop_date);
-
-            [OperationContract]
-            [WebGet]
-            Stream GetGISDistrictValues(string id_gis, string start_date, string stop_date);
-
-            [OperationContract]
-            [WebGet]
-            Stream GetGISDigitalValues(string id_gis, string start_date, string stop_date);
+            #region Funzioni del modulo            
 
             [OperationContract]
             [WebGet]
@@ -48,7 +36,7 @@ namespace WetLib
 
             [OperationContract]
             [WebGet]
-            Stream GetGISAllFiledPointsDayStatistics(string start_date, string stop_date);
+            Stream GetGISAllFieldPointsDayStatistics(string start_date, string stop_date);
 
             [OperationContract]
             [WebGet]
@@ -56,7 +44,11 @@ namespace WetLib
 
             [OperationContract]
             [WebGet]
-            Stream GetFieldPointsTypes();
+            Stream GetFieldPointsInputTypes();
+
+            [OperationContract]
+            [WebGet]
+            Stream GetFieldPointsObjectTypes();
 
             #endregion
         }
@@ -93,157 +85,7 @@ namespace WetLib
 
             #endregion                      
 
-            #region Funzioni GET/POST
-
-            /// <summary>
-            /// Restituisce un array di valori fra due date
-            /// </summary>
-            /// <param name="id_gis">ID GIS</param>
-            /// <param name="start_date">Data di inzio</param>
-            /// <param name="stop_date">Data di fine</param>
-            /// <returns>Stringa con le serie timestamp/valore</returns>
-            public Stream GetGISMeasureValues(string id_gis, string start_date, string stop_date)
-            {
-                DataTable dt;
-                int id_measure = -1;
-                DateTime start = DateTime.MinValue;
-                DateTime stop = DateTime.Now;
-                string ret = "<?xml version =\"1.0\"?>";
-
-                try
-                {
-                    // Converto i valori in data/ora
-                    start = Convert.ToDateTime(start_date);
-                    stop = Convert.ToDateTime(stop_date);
-                    // Acquisisco l'ID della misura in base al codice GIS
-                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
-                    {
-                        dt = wet_db.ExecCustomQuery("SELECT id_measures FROM measures WHERE sap_code = '" + id_gis + "'");
-                        if (dt.Rows.Count == 1)
-                        {
-                            id_measure = Convert.ToInt32(dt.Rows[0]["id_measures"]);
-                        }
-                        else if (dt.Rows.Count == 0)
-                        {
-                            ret += "<Error>Entity not found!</Error>";
-                        }
-                        else
-                        {
-                            ret += "<Error>Non-unique GIS identifier!</Error>";
-                        }
-                    }
-                    // Leggo i dati
-                    dt = wet_db.ExecCustomQuery("SELECT `timestamp`, `value` FROM data_measures WHERE measures_id_measures = " + id_measure +
-                        " AND `timestamp` >= '" + start.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
-                        " AND `timestamp` <= '" + stop.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
-                        " ORDER BY `timestamp` ASC");
-                    if (dt.Rows.Count > 0)
-                    {
-                        ret += "<Records>";
-                        // Ciclo per tutti i dati letti
-                        foreach (DataRow dr in dt.Rows)
-                        {
-                            DateTime ts = Convert.ToDateTime(dr["timestamp"]);
-                            double value = Convert.ToDouble(dr["value"]);
-                            ret += "<Record id=\"" + ts.Ticks + "\"><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
-                                "</Timestamp><Value>" + value.ToString().Replace(',', '.') +
-                                "</Value></Record>";
-                        }
-                        ret += "</Records>";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    WetDebug.GestException(ex);
-                }
-                
-                // Composizione risposta
-                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
-                context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
-            }
-
-            /// <summary>
-            /// Restituisce un array di valori fra due date
-            /// </summary>
-            /// <param name="id_gis">ID GIS</param>
-            /// <param name="start_date">Data di inzio</param>
-            /// <param name="stop_date">Data di fine</param>
-            /// <returns>Stringa con le serie timestamp/valore</returns>
-            public Stream GetGISDistrictValues(string id_gis, string start_date, string stop_date)
-            {
-                DataTable dt;
-                int id_districts = -1;
-                DateTime start = DateTime.MinValue;
-                DateTime stop = DateTime.Now;
-                string ret = string.Empty;
-
-                try
-                {
-                    // Converto i valori in data/ora
-                    start = Convert.ToDateTime(start_date);
-                    stop = Convert.ToDateTime(stop_date);
-                    // Acquisisco l'ID della misura in base al codice GIS
-                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
-                    {
-                        dt = wet_db.ExecCustomQuery("SELECT DISTINCT id_districts FROM districts WHERE sap_code = '" + id_gis + "'");
-                        if (dt.Rows.Count == 1)
-                        {
-                            id_districts = Convert.ToInt32(dt.Rows[0]["id_districts"]);
-                        }
-                        else if (dt.Rows.Count == 0)
-                        {
-                            ret += "<Error>Entity not found!</Error>";
-                        }
-                        else
-                        {
-                            ret += "<Error>Non-unique GIS identifier!</Error>";
-                        }
-                    }
-                    // Leggo i dati
-                    dt = wet_db.ExecCustomQuery("SELECT `timestamp`, `value` FROM data_districts WHERE districts_id_districts = " + id_districts +
-                        " AND `timestamp` >= '" + start.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
-                        " AND `timestamp` <= '" + stop.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
-                        " ORDER BY `timestamp` ASC");
-                    if (dt.Rows.Count > 0)
-                    {
-                        int id = 1;
-                        ret = "<?xml version=\"1.0\"?><Records>";
-                        // Ciclo per tutti i dati letti
-                        foreach (DataRow dr in dt.Rows)
-                        {
-                            DateTime ts = Convert.ToDateTime(dr["timestamp"]);
-                            double value = Convert.ToDouble(dr["value"]);
-                            ret += "<Record id=\"" + id.ToString() + "\"><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
-                                "</Timestamp><Value>" + value.ToString().Replace(',', '.') +
-                                "</Value></Record>";
-                            id++;
-                        }
-                        ret += "</Records>";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    WetDebug.GestException(ex);
-                }
-
-                // Composizione risposta
-                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
-                context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
-            }
-
-            /// <summary>
-            /// Restituisce un array di valori fra due date
-            /// </summary>
-            /// <param name="id_gis">ID GIS</param>
-            /// <param name="start_date">Data di inzio</param>
-            /// <param name="stop_date">Data di fine</param>
-            /// <returns>Stringa con le serie timestamp/valore</returns>
-            public Stream GetGISDigitalValues(string id_gis, string start_date, string stop_date)
-            {
-                return GetGISMeasureValues(id_gis, start_date, stop_date);
-            }
+            #region Funzioni GET/POST            
 
             /// <summary>
             /// Restituisce un array di valori fra due date
@@ -305,8 +147,9 @@ namespace WetLib
                                     {
                                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
                                         double value = Convert.ToDouble(dr["value"]);
-                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks + "\"><type>" + ((int)mtype).ToString() +
-                                            "</type><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks + "\"><InputType>" +
+                                            ((int)WetUtility.GetInputTypeFromMeterType(mtype)).ToString() + "</InputType><ObjectType>" + ((int)mtype).ToString() +
+                                            "</ObjectType><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
                                             "</Timestamp><Value>" + value.ToString().Replace(',', '.') +
                                             "</Value></Record>";
                                     }                                    
@@ -430,7 +273,7 @@ namespace WetLib
             /// Questa funzione restituisce tutte le misure che abbiano un
             /// IDGIS associato.
             /// </remarks>
-            public Stream GetGISAllFiledPointsDayStatistics(string start_date, string stop_date)
+            public Stream GetGISAllFieldPointsDayStatistics(string start_date, string stop_date)
             {
                 string ret = "<?xml version =\"1.0\"?>";
 
@@ -483,8 +326,9 @@ namespace WetLib
                                         double min_day = WetMath.ValidateDouble(Convert.ToDouble(dr["min_day"] == DBNull.Value ? 0.0d : dr["min_day"]));
                                         double max_day = WetMath.ValidateDouble(Convert.ToDouble(dr["max_day"] == DBNull.Value ? 0.0d : dr["max_day"]));
                                         double avg_day = WetMath.ValidateDouble(Convert.ToDouble(dr["avg_day"] == DBNull.Value ? 0.0d : dr["avg_day"]));
-                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + day.Ticks + "\"><type>" + ((int)mtype).ToString() +
-                                            "</type><Day>" + day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
+                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + day.Ticks + "\"><InputType>" +
+                                            ((int)WetUtility.GetInputTypeFromMeterType(mtype)).ToString() + "</InputType><ObjectType>" + ((int)mtype).ToString() +
+                                            "</ObjectType><Day>" + day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
                                             "</Day><MinNight>" + min_night.ToString().Replace(',', '.') +
                                             "</MinNight><MinDay>" + min_day.ToString().Replace(',', '.') +
                                             "</MinDay><MaxDay>" + max_day.ToString().Replace(',', '.') +
@@ -607,71 +451,112 @@ namespace WetLib
             }
 
             /// <summary>
-            /// Restituisce i tipi di misure acquisite dal campo
+            /// Restituisce i tipi di ingresso delle misure
             /// </summary>
-            /// <returns></returns>
-            public Stream GetFieldPointsTypes()
+            /// <returns>Tipi di ingresso</returns>
+            public Stream GetFieldPointsInputTypes()
             {
                 string ret = "<?xml version =\"1.0\"?>";
 
-                ret += "<Types>";
+                ret += "<InputsTypes>";
+                foreach (InputMeterTypes imt in Enum.GetValues(typeof(InputMeterTypes)))
+                {
+                    ret += "<InputType id=\"" + ((int)imt).ToString() + "\">";
+                    switch (imt)
+                    {
+                        default:
+                        case InputMeterTypes.UNKNOWN:
+                            ret += "<Description>Unknown</Description>";
+                            break;
+
+                        case InputMeterTypes.ANALOG_INPUT:
+                            ret += "<Description>Analog input</Description>";
+                            break;
+
+                        case InputMeterTypes.PULSE_INPUT:
+                            ret += "<Description>Digital pulse input</Description>";
+                            break;
+
+                        case InputMeterTypes.DIGITAL_STATE:
+                            ret += "<Description>Digital binary state</Description>";
+                            break;
+                    }                    
+                    ret += "</InputType>";
+                }
+                ret += "</InputsTypes>";
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.ContentType = "text/plain";
+                return new MemoryStream(Encoding.Default.GetBytes(ret));
+            }
+
+            /// <summary>
+            /// Restituisce i tipi di misure acquisite dal campo
+            /// </summary>
+            /// <returns>Restituisce i tipi di misure disponibili</returns>
+            public Stream GetFieldPointsObjectTypes()
+            {
+                string ret = "<?xml version =\"1.0\"?>";
+
+                ret += "<ObjectTypes>";
                 foreach (MeterTypes mtype in Enum.GetValues(typeof(MeterTypes)))
                 {
-                    ret += "<Type id=\"" + ((int)mtype).ToString() + "\">";
+                    ret += "<ObjectType id=\"" + ((int)mtype).ToString() + "\">";
                     switch (mtype)
                     {
                         default:
                         case MeterTypes.UNKNOWN:
-                            ret += "<InputType>Unknown measure</InputType><EngineeringUnits></EngineeringUnits>";
+                            ret += "<Class>Unknown measure</Class><EngineeringUnits></EngineeringUnits>";
                             break;
 
                         case MeterTypes.LCF_FLOW_METER:
-                            ret += "<InputType>LCF flow meter</InputType><EngineeringUnits>l/s</EngineeringUnits>";
+                            ret += "<Class>LCF flow meter</Class><EngineeringUnits>l/s</EngineeringUnits>";
                             break;
 
                         case MeterTypes.MAGNETIC_FLOW_METER:
-                            ret += "<InputType>Magnetic flow meter</InputType><EngineeringUnits>l/s</EngineeringUnits>";
+                            ret += "<Class>Magnetic flow meter</Class><EngineeringUnits>l/s</EngineeringUnits>";
                             break;
 
                         case MeterTypes.ULTRASONIC_FLOW_METER:
-                            ret += "<InputType>Ultrasonic flow meter</InputType><EngineeringUnits>l/s</EngineeringUnits>";
+                            ret += "<Class>Ultrasonic flow meter</Class><EngineeringUnits>l/s</EngineeringUnits>";
                             break;
 
                         case MeterTypes.PRESSURE_METER:
-                            ret += "<InputType>Pressure measure</InputType><EngineeringUnits>bar</EngineeringUnits>";
+                            ret += "<Class>Pressure measure</Class><EngineeringUnits>bar</EngineeringUnits>";
                             break;
 
                         case MeterTypes.VOLUMETRIC_COUNTER:
-                            ret += "<InputType>Flow conversion from volumetric counter</InputType><EngineeringUnits>l/s</EngineeringUnits>";
+                            ret += "<Class>Flow conversion from volumetric counter</Class><EngineeringUnits>l/s</EngineeringUnits>";
                             break;
 
                         case MeterTypes.PUMP:
-                            ret += "<InputType>Pump status</InputType><EngineeringUnits>Digital state</EngineeringUnits>";
+                            ret += "<Class>Pump status</Class><EngineeringUnits>Digital state</EngineeringUnits>";
                             break;
 
                         case MeterTypes.VALVE_NO_REGULATION:
-                            ret += "<InputType>Valve with no regulation</InputType><EngineeringUnits>Digital state</EngineeringUnits>";
+                            ret += "<Class>Valve with no regulation</Class><EngineeringUnits>Digital state</EngineeringUnits>";
                             break;
 
                         case MeterTypes.VALVE_REGULATION:
-                            ret += "<InputType>Valve with regulation</InputType><EngineeringUnits>%</EngineeringUnits>";
+                            ret += "<Class>Valve with regulation</Class><EngineeringUnits>%</EngineeringUnits>";
                             break;
 
                         case MeterTypes.TANK:
-                            ret += "<InputType>Tank level</InputType><EngineeringUnits>mt</EngineeringUnits>";
+                            ret += "<Class>Tank level</Class><EngineeringUnits>mt</EngineeringUnits>";
                             break;
 
                         case MeterTypes.WELL:
-                            ret += "<InputType>Well level</InputType><EngineeringUnits>mt</EngineeringUnits>";
+                            ret += "<Class>Well level</Class><EngineeringUnits>mt</EngineeringUnits>";
                             break;
 
                         case MeterTypes.MOTOR_FREQUENCY:
-                            ret += "<InputType>Motor frequency</InputType><EngineeringUnits>Hz</EngineeringUnits>";
+                            ret += "<Class>Motor frequency</Class><EngineeringUnits>Hz</EngineeringUnits>";
                             break;
                     }
-                    ret += "</Type>";
+                    ret += "</ObjectType>";
                 }
-                ret += "</Types>";
+                ret += "</ObjectTypes>";
 
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;

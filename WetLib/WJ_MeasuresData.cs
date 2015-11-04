@@ -204,7 +204,7 @@ namespace WetLib
                     measure_coord.relational_id_value = Convert.ToString(measure["table_relational_id_value"]);
                     measure_coord.relational_id_type = (WetDBConn.PrimaryKeyColumnTypes)Convert.ToInt32(measure["table_relational_id_type"]);
                     // Controllo se la misura è reale o fittizia
-                    MeasuresSourcesType mst = MeasuresSourcesType.REAL;
+                    MeasuresSourcesTypes mst = MeasuresSourcesTypes.REAL;
                     if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
                     {
                         if ((mtype == MeasureTypes.FLOW) || (mtype == MeasureTypes.PRESSURE))
@@ -213,16 +213,16 @@ namespace WetLib
                                 (measure_coord.timestamp_column.ToLower() == "fake_timestamp") &&
                                 (measure_coord.value_column.ToLower() == "fake_value"))
                             {
-                                mst = MeasuresSourcesType.FIXED;
+                                mst = MeasuresSourcesTypes.FIXED;
                             }
                         }
                     }
                     else
-                        mst = (MeasuresSourcesType)Convert.ToInt32(measure["source"]);
+                        mst = (MeasuresSourcesTypes)Convert.ToInt32(measure["source"]);
                     // Inizio l'acquisiszione dei dati
                     DateTime last_source = DateTime.MinValue;
                     WetDBConn source_db = null;
-                    if (mst == MeasuresSourcesType.REAL)
+                    if (mst == MeasuresSourcesTypes.REAL)
                     {
                         // Istanzio la connessione al database sorgente
                         source_db = new WetDBConn(measure_coord.odbc_connection, measure_coord.username, measure_coord.password, false);
@@ -243,7 +243,7 @@ namespace WetLib
                     {
                         DataTable samples;
 
-                        if (mst == MeasuresSourcesType.REAL)
+                        if (mst == MeasuresSourcesTypes.REAL)
                         {
                             // Acquisisco tutti i campioni da scrivere                        
                             samples = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, last_dest, DateTime.Now, WetDBConn.OrderTypes.ASC, MAX_RECORDS_IN_QUERY));

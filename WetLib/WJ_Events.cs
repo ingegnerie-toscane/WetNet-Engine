@@ -101,7 +101,7 @@ namespace WetLib
             /// <summary>
             /// Tipo di misura di riferimento
             /// </summary>
-            public DistrictStatisticMeasureType measure_type;
+            public DistrictStatisticMeasureTypes measure_type;
 
             /// <summary>
             /// Tempo di perdurazione dell'evento espresso in giorni
@@ -247,7 +247,7 @@ namespace WetLib
                     // Acquisisco la banda inferiore statistica
                     double statistic_low_band = Convert.ToDouble(district["ev_statistic_low_band"]);
                     // Acquisisco tipo di variabile statistica da utilizzare
-                    DistrictStatisticMeasureType measure_type = (DistrictStatisticMeasureType)(Convert.ToInt32(district["ev_variable_type"]));
+                    DistrictStatisticMeasureTypes measure_type = (DistrictStatisticMeasureTypes)(Convert.ToInt32(district["ev_variable_type"]));
                     // Acquisisco l'ultimo giorno valido
                     DateTime last_good_day = Convert.ToDateTime(district["ev_last_good_sample_day"]);
                     // Acquisisco il numero di campioni precedenti l'ultimo giorno valido
@@ -298,25 +298,25 @@ namespace WetLib
                             no_valid_daily_statistic_record = true;
                         else
                         {
-                            if (measure_type != DistrictStatisticMeasureType.STATISTICAL_PROFILE)
+                            if (measure_type != DistrictStatisticMeasureTypes.STATISTICAL_PROFILE)
                             {
                                 // Imposto il nome della variabile da acquisire                                
                                 switch (measure_type)
                                 {
                                     default:
-                                    case DistrictStatisticMeasureType.MIN_NIGHT:
+                                    case DistrictStatisticMeasureTypes.MIN_NIGHT:
                                         measure_name = "min_night";
                                         break;
 
-                                    case DistrictStatisticMeasureType.MIN_DAY:
+                                    case DistrictStatisticMeasureTypes.MIN_DAY:
                                         measure_name = "min_day";
                                         break;
 
-                                    case DistrictStatisticMeasureType.MAX_DAY:
+                                    case DistrictStatisticMeasureTypes.MAX_DAY:
                                         measure_name = "max_day";
                                         break;
 
-                                    case DistrictStatisticMeasureType.AVG_DAY:
+                                    case DistrictStatisticMeasureTypes.AVG_DAY:
                                         measure_name = "avg_day";
                                         break;
                                 }
@@ -361,7 +361,7 @@ namespace WetLib
                                 Event ev;
                                 ev.day = actual;
                                 ev.type = EventTypes.OUT_OF_CONTROL;
-                                ev.measure_type = DistrictStatisticMeasureType.STATISTICAL_PROFILE;
+                                ev.measure_type = DistrictStatisticMeasureTypes.STATISTICAL_PROFILE;
                                 ev.duration = 1;
                                 ev.description = "District out of control - Allarm(s) on measure(s): ";
                                 ev.id_district = id_district;
@@ -413,7 +413,7 @@ namespace WetLib
                             continue;
                         }
                         // Eseguo l'analisi in base al tipo di variabile
-                        if (measure_type == DistrictStatisticMeasureType.STATISTICAL_PROFILE)
+                        if (measure_type == DistrictStatisticMeasureTypes.STATISTICAL_PROFILE)
                         {
                             #region Profili statistici
 
@@ -513,7 +513,7 @@ namespace WetLib
                                         avg_sample = 1.0d;
                                     // Acquisisco gli ultimi eventi in base al trigger
                                     Event[] lasts;
-                                    ReadLastPastEvents(id_district, actual, samples_trigger, out lasts);
+                                    ReadLastPastEventsUnderControl(id_district, actual, samples_trigger, out lasts);
                                     bool check = true;
                                     if (lasts.Length > 0)
                                     {
@@ -778,7 +778,7 @@ namespace WetLib
                                     avg_day = 1.0d;
                                 // Acquisisco gli ultimi eventi in base al trigger
                                 Event[] lasts;
-                                ReadLastPastEvents(id_district, actual, samples_trigger, out lasts);
+                                ReadLastPastEventsUnderControl(id_district, actual, samples_trigger, out lasts);
                                 bool check = true;
                                 if (lasts.Length > 0)
                                 {
@@ -1025,7 +1025,7 @@ namespace WetLib
                         evs.Clear();
                 }
                 ev.type = (EventTypes)Convert.ToInt32(events_table.Rows[ii]["type"]);
-                ev.measure_type = (DistrictStatisticMeasureType)Convert.ToInt32(events_table.Rows[ii]["measure_type"]);
+                ev.measure_type = (DistrictStatisticMeasureTypes)Convert.ToInt32(events_table.Rows[ii]["measure_type"]);
                 ev.duration = Convert.ToInt32(events_table.Rows[ii]["duration"]);
                 ev.value = Convert.ToDouble(events_table.Rows[ii]["value"]);
                 ev.delta = Convert.ToDouble(events_table.Rows[ii]["delta_value"]);
@@ -1052,28 +1052,72 @@ namespace WetLib
             // Acquisisco la lista degli ultimi eventi
             DataTable events_table = wet_db.ExecCustomQuery("SELECT * FROM districts_events WHERE districts_id_districts = " + id_district.ToString() +
                 " AND `day` >= '" + first_day.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
-                "' AND `day` < '" + day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
-                "' AND `type` <> " + ((int)EventTypes.OUT_OF_CONTROL).ToString() + " ORDER BY `day` ASC");
+                "' AND `day` < '" + day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' ORDER BY `day` ASC");
             List<Event> evs = new List<Event>();
             for (int ii = 0; ii < events_table.Rows.Count; ii++)
             {
                 Event ev;
 
-                ev.day = Convert.ToDateTime(events_table.Rows[ii]["day"]);
-                // Se fra questo evento ed il precedente è trascorso più di un giorno, azzero gli eventi precedenti
-                if (evs.Count > 0)
-                {
-                    if ((ev.day - evs.Last().day) > new TimeSpan(1, 0, 0, 0))
-                        evs.Clear();
-                }
+                ev.day = Convert.ToDateTime(events_table.Rows[ii]["day"]);                
                 ev.type = (EventTypes)Convert.ToInt32(events_table.Rows[ii]["type"]);
-                ev.measure_type = (DistrictStatisticMeasureType)Convert.ToInt32(events_table.Rows[ii]["measure_type"]);
+                ev.measure_type = (DistrictStatisticMeasureTypes)Convert.ToInt32(events_table.Rows[ii]["measure_type"]);
                 ev.duration = Convert.ToInt32(events_table.Rows[ii]["duration"]);
                 ev.value = Convert.ToDouble(events_table.Rows[ii]["value"]);
                 ev.delta = Convert.ToDouble(events_table.Rows[ii]["delta_value"]);
                 ev.ranking = Convert.ToDouble(events_table.Rows[ii]["ranking"]);
                 ev.description = Convert.ToString(events_table.Rows[ii]["description"]);
                 ev.id_district = Convert.ToInt32(events_table.Rows[ii]["districts_id_districts"]);
+
+                // gestisco gli eventi di fuori controllo
+                if (ev.type == EventTypes.OUT_OF_CONTROL)
+                {
+                    Event last_good;
+
+                    // Acquisisco l'ultimo evento valido
+                    if (ii == 0)
+                    {
+                        // Devo eseguire una query per avere l'ultimo evento valido
+                        DataTable last_good_events_table = wet_db.ExecCustomQuery("SELECT * FROM districts_events WHERE districts_id_districts = " + id_district.ToString() +
+                            " AND `day` < '" + ev.day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
+                            "' AND `type` <> " + ((int)EventTypes.OUT_OF_CONTROL).ToString() + " ORDER BY `day` DESC LIMIT 1");
+                        if (last_good_events_table.Rows.Count == 1)
+                        {
+                            last_good.day = Convert.ToDateTime(last_good_events_table.Rows[ii]["day"]);
+                            last_good.type = (EventTypes)Convert.ToInt32(last_good_events_table.Rows[ii]["type"]);
+                            last_good.measure_type = (DistrictStatisticMeasureTypes)Convert.ToInt32(last_good_events_table.Rows[ii]["measure_type"]);
+                            last_good.duration = Convert.ToInt32(last_good_events_table.Rows[ii]["duration"]);
+                            last_good.value = Convert.ToDouble(last_good_events_table.Rows[ii]["value"]);
+                            last_good.delta = Convert.ToDouble(last_good_events_table.Rows[ii]["delta_value"]);
+                            last_good.ranking = Convert.ToDouble(last_good_events_table.Rows[ii]["ranking"]);
+                            last_good.description = Convert.ToString(last_good_events_table.Rows[ii]["description"]);
+                            last_good.id_district = Convert.ToInt32(last_good_events_table.Rows[ii]["districts_id_districts"]);
+                        }
+                        else
+                            last_good = ev; // Evento inatteso, è possibile solo se la storia degli eventi di un distretto presenta solo eventi fuori controllo!!!
+                    }
+                    else
+                    {
+                        // Acquisisco dalla lista degli eventi letti l'ultimo valido
+                        last_good = evs.Last();
+                    }
+
+                    // Calcolo i giorni di differenza fra l'ultimo evento valido e l'attuale
+                    int days_diff = (int)((ev.day - last_good.day).TotalDays);
+
+                    // Scelgo il comportamento in base all'evento
+                    if (last_good.type != EventTypes.OUT_OF_CONTROL)
+                    {
+                        if((last_good.type == EventTypes.ANOMAL_INCREASE) && ((last_good.duration + days_diff) >= number))
+                            last_good.type = EventTypes.POSSIBLE_LOSS;
+                        if ((last_good.type == EventTypes.ANOMAL_DECREASE) && ((last_good.duration + days_diff) >= number))
+                            last_good.type = EventTypes.POSSIBLE_GAIN;
+                        last_good.day = ev.day;
+                        last_good.duration += days_diff;
+                    }
+
+                    // Modifico l'evento di fuori controllo con quello fittizio
+                    ev = last_good;                    
+                }
 
                 evs.Add(ev);
             }
@@ -1095,7 +1139,7 @@ namespace WetLib
             {
                 ev.day = Convert.ToDateTime(last_ev.Rows[0]["day"]);
                 ev.type = (EventTypes)Convert.ToInt32(last_ev.Rows[0]["type"]);
-                ev.measure_type = (DistrictStatisticMeasureType)Convert.ToInt32(last_ev.Rows[0]["measure_type"]);
+                ev.measure_type = (DistrictStatisticMeasureTypes)Convert.ToInt32(last_ev.Rows[0]["measure_type"]);
                 ev.duration = Convert.ToInt32(last_ev.Rows[0]["duration"]);
                 ev.value = Convert.ToDouble(last_ev.Rows[0]["value"]);
                 ev.delta = Convert.ToDouble(last_ev.Rows[0]["delta_value"]);
@@ -1123,7 +1167,7 @@ namespace WetLib
             {
                 events[ii].day = Convert.ToDateTime(events_table.Rows[ii]["day"]);
                 events[ii].type = (EventTypes)Convert.ToInt32(events_table.Rows[ii]["type"]);
-                events[ii].measure_type = (DistrictStatisticMeasureType)Convert.ToInt32(events_table.Rows[ii]["measure_type"]);
+                events[ii].measure_type = (DistrictStatisticMeasureTypes)Convert.ToInt32(events_table.Rows[ii]["measure_type"]);
                 events[ii].duration = Convert.ToInt32(events_table.Rows[ii]["duration"]);
                 events[ii].value = Convert.ToDouble(events_table.Rows[ii]["value"]);
                 events[ii].delta = Convert.ToDouble(events_table.Rows[ii]["delta_value"]);
@@ -1225,27 +1269,27 @@ namespace WetLib
                             " Variable:";
                         switch (ev.measure_type)
                         {
-                            case DistrictStatisticMeasureType.MIN_NIGHT:
+                            case DistrictStatisticMeasureTypes.MIN_NIGHT:
                                 mail_msg += "Min. Night";
                                 sms_msg += "MinNight";
                                 break;
 
-                            case DistrictStatisticMeasureType.MIN_DAY:
+                            case DistrictStatisticMeasureTypes.MIN_DAY:
                                 mail_msg += "Min. Day";
                                 sms_msg += "MinDay";
                                 break;
 
-                            case DistrictStatisticMeasureType.AVG_DAY:
+                            case DistrictStatisticMeasureTypes.AVG_DAY:
                                 mail_msg += "Avg. Day";
                                 sms_msg += "AvgDay";
                                 break;
 
-                            case DistrictStatisticMeasureType.MAX_DAY:
+                            case DistrictStatisticMeasureTypes.MAX_DAY:
                                 mail_msg += "Max. Day";
                                 sms_msg += "MaxDay";
                                 break;
 
-                            case DistrictStatisticMeasureType.STATISTICAL_PROFILE:
+                            case DistrictStatisticMeasureTypes.STATISTICAL_PROFILE:
                                 mail_msg += "Statistical profile";
                                 sms_msg += "StatProfile";
                                 break;

@@ -120,6 +120,46 @@ namespace WetLib
             return values.ToArray();
         }
 
+        /// <summary>
+        /// Restituisce il tipo di ingresso in base all'oggetto
+        /// </summary>
+        /// <param name="mtype">Tipo di oggetto</param>
+        /// <returns>Tipo di ingresso</returns>
+        public static InputMeterTypes GetInputTypeFromMeterType(MeterTypes mtype)
+        {
+            InputMeterTypes imt;
+
+            switch (mtype)
+            {
+                default:
+                case MeterTypes.UNKNOWN:
+                    imt = InputMeterTypes.UNKNOWN;
+                    break;
+
+                case MeterTypes.MAGNETIC_FLOW_METER:
+                case MeterTypes.ULTRASONIC_FLOW_METER:
+                case MeterTypes.LCF_FLOW_METER:
+                case MeterTypes.PRESSURE_METER:
+                case MeterTypes.TANK:
+                case MeterTypes.WELL:
+                case MeterTypes.VALVE_REGULATION:
+                case MeterTypes.MOTOR_FREQUENCY:
+                    imt = InputMeterTypes.ANALOG_INPUT;
+                    break;
+
+                case MeterTypes.VOLUMETRIC_COUNTER:
+                    imt = InputMeterTypes.PULSE_INPUT;
+                    break;
+
+                case MeterTypes.PUMP:
+                case MeterTypes.VALVE_NO_REGULATION:
+                    imt = InputMeterTypes.DIGITAL_STATE;
+                    break;
+            }
+
+            return imt;
+        }
+
         #endregion
     }
 }
