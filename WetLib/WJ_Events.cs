@@ -46,7 +46,7 @@ namespace WetLib
         /// <summary>
         /// Enumerazione dei tipi di eventi
         /// </summary>
-        enum EventTypes : int
+        public enum EventTypes : int
         {
             /// <summary>
             /// Evento non valido
@@ -216,7 +216,7 @@ namespace WetLib
                 if (DateTime.Now.Hour < CHECK_HOUR)
                     return;
                 // Controllo cold_start_counter
-                if (WetEngine.cold_start_counter < 3)
+                if (WetEngine.cold_start_counter < 4)
                     return;
                 // Acquisisco tutti i distretti configurati
                 DataTable districts = wet_db.ExecCustomQuery("SELECT * FROM districts");
@@ -955,7 +955,7 @@ namespace WetLib
                 WetDebug.GestException(ex);
             }
             // Aggiorno cold_start_counter
-            if (WetEngine.cold_start_counter == 3)
+            if (WetEngine.cold_start_counter == 4)
                 WetEngine.cold_start_counter++;
         }
 

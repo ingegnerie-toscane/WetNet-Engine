@@ -87,7 +87,7 @@ namespace WetLib
         protected override void DoJob()
         {
             // Controllo cold_start_conter
-            if (WetEngine.cold_start_counter < 1)
+            if (WetEngine.cold_start_counter < 2)
                 return;
             // Acquisisco tutti i distretti configurati
             DataTable districts = wet_db.ExecCustomQuery("SELECT * FROM districts");
@@ -305,7 +305,7 @@ namespace WetLib
                 Sleep();
             }
             // Aggiorno cold_start_counter
-            if (WetEngine.cold_start_counter == 1)
+            if (WetEngine.cold_start_counter == 2)
                 WetEngine.cold_start_counter++;                           
         }
 

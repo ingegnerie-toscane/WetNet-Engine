@@ -221,6 +221,8 @@ namespace WetLib
             {
                 if (dir[0] == 'd')
                     dirs.Add(dir.Split(new char[] { ' ' }, 9, StringSplitOptions.RemoveEmptyEntries).Last());
+                if (dir.Contains("<DIR>"))
+                    dirs.Add(dir.Remove(0, dir.IndexOf("<DIR>") + 5).TrimStart(new char[] { ' ' }));
             }
 
             return dirs.ToArray();
@@ -245,6 +247,8 @@ namespace WetLib
             {
                 if (dir[0] == '-')
                     files.Add(dir.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ElementAtOrDefault(8));
+                if ((dir[0] != 'd') && (dir[0] != 'l'))
+                    files.Add(dir.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).ElementAtOrDefault(3));
             }
 
             return files.ToArray();

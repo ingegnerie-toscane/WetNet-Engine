@@ -40,7 +40,7 @@ namespace WetLib
     /// <summary>
     /// Tipo di giorno
     /// </summary>
-    public enum DayTypes : int
+    enum DayTypes : int
     {
         /// <summary>
         /// Giorno feriale
@@ -56,7 +56,7 @@ namespace WetLib
     /// <summary>
     /// Tipi di misura supportati
     /// </summary>
-    public enum MeasureTypes : int
+    enum MeasureTypes : int
     {
         /// <summary>
         /// Misura di portata
@@ -91,7 +91,7 @@ namespace WetLib
     /// <summary>
     /// categoria energetica delle misure
     /// </summary>
-    public enum EnergyCategories : int
+    enum EnergyCategories : int
     {
         /// <summary>
         /// Nessuna
@@ -112,7 +112,7 @@ namespace WetLib
     /// <summary>
     /// Tipo di misuratori
     /// </summary>
-    public enum MeterTypes : int
+    enum MeterTypes : int
     {
         /// <summary>
         /// Sconosciuto
@@ -178,7 +178,7 @@ namespace WetLib
     /// <summary>
     /// Tipo di collegamento dei misuratori
     /// </summary>
-    public enum MeterLinkTypes : int
+    enum MeterLinkTypes : int
     {
         /// <summary>
         /// Sconosciuto
@@ -209,7 +209,7 @@ namespace WetLib
     /// <summary>
     /// Tipi di classi dei distretti
     /// </summary>
-    public enum DistrictClasses : int
+    enum DistrictClasses : int
     {
         /// <summary>
         /// Classe A
@@ -230,7 +230,7 @@ namespace WetLib
     /// <summary>
     /// Districts measures signs
     /// </summary>
-    public enum DistrictsMeasuresSigns : int
+    enum DistrictsMeasuresSigns : int
     {
         /// <summary>
         /// +
@@ -251,7 +251,7 @@ namespace WetLib
     /// <summary>
     /// Tipo di misura statistica per la generazione degli eventi
     /// </summary>
-    public enum DistrictStatisticMeasureTypes : int
+    enum DistrictStatisticMeasureTypes : int
     {
         /// <summary>
         /// Minima notturna
@@ -285,7 +285,7 @@ namespace WetLib
     /// <remarks>
     /// Valido solo su modello DB >= 2.0
     /// </remarks>
-    public enum MeasuresSourcesTypes : int
+    enum MeasuresSourcesTypes : int
     {
         /// <summary>
         /// Misure reali acquisite via ODBC
@@ -311,7 +311,7 @@ namespace WetLib
     /// <summary>
     /// Tipo di ingresso del misuratore
     /// </summary>
-    public enum InputMeterTypes : int
+    enum InputMeterTypes : int
     {
         /// <summary>
         /// Sconosciuto
@@ -339,7 +339,7 @@ namespace WetLib
     /// <summary>
     /// Classe per la gestione della configurazione
     /// </summary>
-    public sealed class WetConfig
+    sealed class WetConfig
     {
         #region Costanti
 

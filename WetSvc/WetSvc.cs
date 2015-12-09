@@ -62,7 +62,7 @@ namespace WetSvc
             // Inizializzazione standard dei componenti
             InitializeComponent();
             // Inizializzazione personalizzata dei componenti
-            wet_engine = new WetEngine();
+            wet_engine = new WetEngine();            
         }
 
         #endregion

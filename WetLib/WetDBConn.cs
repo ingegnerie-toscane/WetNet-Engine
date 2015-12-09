@@ -36,7 +36,7 @@ using System.Threading;
 
 namespace WetLib
 {
-    public sealed class WetDBConn
+    sealed class WetDBConn
     {
         #region Costanti
 
@@ -239,9 +239,15 @@ namespace WetLib
             this.odbc_dsn = odbc_dsn;
             connection_string = "DSN=" + odbc_dsn;
             if (username != null)
-                connection_string += "; Uid=" + username;
+            {
+                if (username != string.Empty)
+                    connection_string += "; Uid=" + username;
+            }
             if (password != null)
-                connection_string += "; Pwd=" + password;
+            {
+                if (password != string.Empty)
+                    connection_string += "; Pwd=" + password;
+            }
             // Controllo che faccia riferimento ad un database MySQL
             if (mysql_required && (GetServerType() != DBServerTypes.MYSQL))
                 throw new Exception("MySQL ODBC Driver requested!");
@@ -679,7 +685,8 @@ namespace WetLib
             {
                 try
                 {
-                    DataTable dt = ExecCustomQuery("SELECT DISTINCT db_type FROM connections WHERE odbc_dsn = " + odbc_dsn);
+                    WetDBConn dbc = new WetDBConn(GetWetDBDSN(), null, null, true);
+                    DataTable dt = dbc.ExecCustomQuery("SELECT DISTINCT `db_type` FROM connections WHERE `odbc_dsn` = '" + odbc_dsn + "'");
                     if (dt.Rows.Count == 1)
                     {
                         int db_type_id = Convert.ToInt32(dt.Rows[0]["db_type"]);

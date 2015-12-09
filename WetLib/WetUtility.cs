@@ -36,7 +36,7 @@ namespace WetLib
     /// <summary>
     /// Classe statica che incorpora una libreria di funzioni utili
     /// </summary>
-    public static class WetUtility
+    static class WetUtility
     {
         #region Funzioni del modulo
 

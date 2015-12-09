@@ -36,7 +36,7 @@ namespace WetLib
     /// <summary>
     /// Classe di funzioni matematiche
     /// </summary>
-    public static class WetMath
+    static class WetMath
     {
         /// <summary>
         /// Restituisce 0.0 se il double non è un valore numerico finito

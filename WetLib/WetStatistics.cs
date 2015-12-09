@@ -35,7 +35,7 @@ namespace WetLib
     /// <summary>
     /// Classe di funzioni statistiche
     /// </summary>
-    public static class WetStatistics
+    static class WetStatistics
     {
         #region Funzioni del modulo
 

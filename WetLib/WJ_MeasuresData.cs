@@ -30,6 +30,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data;
+using System.Globalization;
 
 namespace WetLib
 {
@@ -185,6 +186,23 @@ namespace WetLib
                     double energy_specific_content = Convert.ToDouble(measure["energy_specific_content"]) * 3.6d;   // KWh/mc -> KW/(l/s)
                     double fixed_value = Convert.ToDouble(measure["fixed_value"] == DBNull.Value ? 0.0d : measure["fixed_value"]);
                     double multiplication_factor = 1.0d;    // Valore di default (anche versione 1.0)
+                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                    {
+                        string strumentation_model = Convert.ToString(measure["strumentation_model"] == DBNull.Value ? string.Empty : measure["strumentation_model"]);
+                        if (strumentation_model.Contains("*#") && (strumentation_model.Contains("#*")))
+                        {                            
+                            try
+                            {
+                                string tmpstr = strumentation_model.Remove(0, strumentation_model.IndexOf("*#", 0) + 2);
+                                tmpstr = tmpstr.Remove(tmpstr.IndexOf("#*", 0));
+                                multiplication_factor = WetMath.ValidateDouble(Convert.ToDouble(tmpstr, CultureInfo.InvariantCulture));
+                            }
+                            catch (Exception mfe)
+                            {
+                                WetDebug.GestException(mfe);
+                            }
+                        }
+                    }
                     if (WetDBConn.wetdb_model_version != WetDBConn.WetDBModelVersion.V1_0)
                     {
                         multiplication_factor = WetMath.ValidateDouble(Convert.ToDouble(measure["multiplication_factor"] == DBNull.Value ? 1.0d : measure["multiplication_factor"]));

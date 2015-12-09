@@ -213,9 +213,15 @@ namespace WetLib
 
                             int id_district = Convert.ToInt32(district["id_districts"]);
                             if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            {
                                 id_gis = Convert.ToString(district["sap_code"]);
+                                if ((id_gis[0] != '$') && (id_gis.Last() != '$'))
+                                    continue;
+                                else
+                                    id_gis = id_gis.Remove(id_gis.Length - 1).Remove(0, 1);
+                            }
                             else
-                                id_gis = Convert.ToString(district["gis_code"]);
+                                id_gis = Convert.ToString(district["gis_code"]);                           
 
                             try
                             {
@@ -393,9 +399,15 @@ namespace WetLib
                             DateTime start = DateTime.MinValue;
                             DateTime stop = DateTime.Now;
 
-                            int id_district = Convert.ToInt32(district["id_districts"]);                            
+                            int id_district = Convert.ToInt32(district["id_districts"]);
                             if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            {
                                 id_gis = Convert.ToString(district["sap_code"]);
+                                if (id_gis[0] != '*')
+                                    continue;
+                                else
+                                    id_gis = id_gis.Remove(0, 1);
+                            }
                             else
                                 id_gis = Convert.ToString(district["gis_code"]);
 

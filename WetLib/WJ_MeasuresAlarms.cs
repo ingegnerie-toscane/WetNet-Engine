@@ -193,6 +193,9 @@ namespace WetLib
         {
             try
             {
+                // Controllo cold_start_conter
+                if (WetEngine.cold_start_counter < 1)
+                    return;
                 // Acquisizione di tutte le misure configurate
                 DataTable measures = wet_db.ExecCustomQuery("SELECT * FROM measures");
                 // Ciclo per tutte le misure
@@ -367,6 +370,9 @@ namespace WetLib
             {
                 WetDebug.GestException(ex);
             }
+            // Aggiorno cold_start_counter
+            if (WetEngine.cold_start_counter == 1)
+                WetEngine.cold_start_counter++;
         }
 
         #endregion

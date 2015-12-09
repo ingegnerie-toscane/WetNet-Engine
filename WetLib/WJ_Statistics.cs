@@ -106,14 +106,14 @@ namespace WetLib
             if (DateTime.Now.Hour < CHECK_HOUR)
                 return;
             // Controllo cold_start_counter
-            if (WetEngine.cold_start_counter < 2)
+            if (WetEngine.cold_start_counter < 3)
                 return;
             // Processo la statistica sulle misure
             MeasuresStatistic();
             // Processo la statistica sui distretti
             DistrictsStatistic();
             // Aggiorno cold_start_counter
-            if (WetEngine.cold_start_counter == 2)
+            if (WetEngine.cold_start_counter == 3)
                 WetEngine.cold_start_counter++;
         }
 
@@ -142,24 +142,138 @@ namespace WetLib
                         DataTable first_day_table = wet_db.ExecCustomQuery("SELECT * FROM measures_day_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `day` DESC LIMIT 1");
                         if (first_day_table.Rows.Count == 1)
                             first_day = Convert.ToDateTime(first_day_table.Rows[0]["day"]);                        
-                        // Leggo l'ultimo giorno scritto sulle statistiche mensili e annuali
-                        DateTime first_month = DateTime.MinValue;
-                        DateTime first_year = DateTime.MinValue;
+                        // Calcolo statistiche mensili e annuali
                         if (WetDBConn.wetdb_model_version != WetDBConn.WetDBModelVersion.V1_0)
                         {
-                            DataTable first_month_table = wet_db.ExecCustomQuery("SELECT * FROM measures_month_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `month` DESC LIMIT 1");
-                            if (first_month_table.Rows.Count == 1)
-                                first_month = Convert.ToDateTime(first_month_table.Rows[0]["month"]);                            
-                            DataTable first_year_table = wet_db.ExecCustomQuery("SELECT * FROM measures_year_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `year` DESC LIMIT 1");
-                            if (first_year_table.Rows.Count == 1)
-                                first_year = Convert.ToDateTime(first_year_table.Rows[0]["year"]);
-                        }
-                        // Effettuo analisi mensili e annuali
-                        if (WetDBConn.wetdb_model_version != WetDBConn.WetDBModelVersion.V1_0)
-                        {
-                            // Calcolo mese e anno precedenti
-                            DateTime prec_month = DateTime.Now.Date.AddMonths(-1);
-                            DateTime prec_year = DateTime.Now.Date.AddYears(-1);
+                            // Controllo di avere nelle statistiche giornaliere almeno un record per il mese corrente
+                            DataTable last_day_statistic = wet_db.ExecCustomQuery("SELECT `day` FROM measures_day_statistic WHERE measures_id_measures = " + id_measure.ToString() + " ORDER BY `day` DESC LIMIT 1");
+                            if (last_day_statistic.Rows.Count == 1)
+                            {
+                                DateTime last_day_record = Convert.ToDateTime(last_day_statistic.Rows[0]["day"]).Date;
+                                if (DateTime.Now.Date == last_day_record.AddDays(1.0d))
+                                {
+                                    // Leggo l'ultimo giorno scritto sulle statistiche mensili e annuali
+                                    DateTime update_timestamp = Convert.ToDateTime(measure["update_timestamp"]);
+                                    DateTime first_month = update_timestamp.Date;
+                                    DateTime first_year = update_timestamp.Date;
+                                    DataTable first_month_table = wet_db.ExecCustomQuery("SELECT * FROM measures_month_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `month` DESC LIMIT 1");
+                                    if (first_month_table.Rows.Count == 1)
+                                        first_month = Convert.ToDateTime(first_month_table.Rows[0]["month"]).Date.AddMonths(1);
+                                    DataTable first_year_table = wet_db.ExecCustomQuery("SELECT * FROM measures_year_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `year` DESC LIMIT 1");
+                                    if (first_year_table.Rows.Count == 1)
+                                        first_year = Convert.ToDateTime(first_year_table.Rows[0]["year"]).Date.AddYears(1);
+                                    // Calcolo mese e anno precedenti
+                                    DateTime prec_month = DateTime.Now.Date.AddMonths(-1);
+                                    DateTime prec_year = DateTime.Now.Date.AddYears(-1);
+
+                                    #region Calcolo mensile
+
+                                    // Ciclo per il calcolo dei mesi
+                                    
+                                    DateTime check_limit = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+                                    while (first_month < check_limit)
+                                    {
+                                        // Acquisisco gli storici giornalieri
+                                        DataTable month_statistic_records = wet_db.ExecCustomQuery("SELECT `day`, `min_night`, `min_day`, `max_day`, `avg_day` FROM measures_day_statistic WHERE `day` >= '" +
+                                            first_month.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' AND `day` < '" +
+                                            first_month.AddMonths(1).ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' AND measures_id_measures = " + id_measure.ToString());
+                                        // Calcolo su base mensile
+                                        List<double> min_night_list = new List<double>();
+                                        List<double> min_day_list = new List<double>();
+                                        List<double> max_day_list = new List<double>();
+                                        List<double> avg_day_list = new List<double>();
+                                        foreach (DataRow dr in month_statistic_records.Rows)
+                                        {
+                                            if (dr["min_night"] != DBNull.Value)
+                                                min_night_list.Add(Convert.ToDouble(dr["min_night"]));
+                                            if (dr["min_day"] != DBNull.Value)
+                                                min_day_list.Add(Convert.ToDouble(dr["min_day"]));
+                                            if (dr["max_day"] != DBNull.Value)
+                                                max_day_list.Add(Convert.ToDouble(dr["max_day"]));
+                                            if (dr["avg_day"] != DBNull.Value)
+                                                avg_day_list.Add(Convert.ToDouble(dr["avg_day"]));
+                                        }
+                                        double min_night = double.NaN;
+                                        if (min_night_list.Count > 0)
+                                            min_night = WetStatistics.GetMean(min_night_list.ToArray());
+                                        double min_month = double.NaN;
+                                        if (min_day_list.Count > 0)
+                                            min_month = WetStatistics.GetMin(min_day_list.ToArray());
+                                        double max_month = double.NaN;
+                                        if (max_day_list.Count > 0)
+                                            max_month = WetStatistics.GetMax(max_day_list.ToArray());
+                                        double avg_month = double.NaN;
+                                        if (avg_day_list.Count > 0)
+                                            avg_month = WetStatistics.GetMean(avg_day_list.ToArray());
+                                        // Aggiungo il record mensile
+                                        DateTime record_date = new DateTime(first_month.Year, first_month.Month, DateTime.DaysInMonth(first_month.Year, first_month.Month));
+                                        wet_db.ExecCustomCommand("INSERT INTO measures_month_statistic VALUES ('" +
+                                            record_date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'," +
+                                            (double.IsNaN(min_night) ? "NULL" : min_night.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(min_month) ? "NULL" : min_month.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(max_month) ? "NULL" : max_month.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(avg_month) ? "NULL" : avg_month.ToString().Replace(",", ".")) + "," +
+                                            id_measure.ToString() + ")");
+                                        // Passo al mese successivo
+                                        first_month = first_month.AddMonths(1);
+                                    }
+
+                                    #endregion
+
+                                    #region Calcolo annuale
+
+                                    // Ciclo per il calcolo degli anni
+                                    check_limit = new DateTime(DateTime.Now.Year, 1, 1);
+                                    while (first_year < check_limit)
+                                    {
+                                        // Acquisisco gli storici mensili
+                                        DataTable year_statistic_records = wet_db.ExecCustomQuery("SELECT * FROM measures_month_statistic WHERE `month` >= '" +
+                                            first_year.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' AND `month` < '" +
+                                            first_year.AddYears(1).ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' AND measures_id_measures = " + id_measure.ToString());
+                                        // Calcolo su base annuale
+                                        List<double> min_night_list = new List<double>();
+                                        List<double> min_month_list = new List<double>();
+                                        List<double> max_month_list = new List<double>();
+                                        List<double> avg_month_list = new List<double>();
+                                        foreach (DataRow dr in year_statistic_records.Rows)
+                                        {
+                                            if (dr["min_night"] != DBNull.Value)
+                                                min_night_list.Add(Convert.ToDouble(dr["min_night"]));
+                                            if (dr["min_month"] != DBNull.Value)
+                                                min_month_list.Add(Convert.ToDouble(dr["min_month"]));
+                                            if (dr["max_month"] != DBNull.Value)
+                                                max_month_list.Add(Convert.ToDouble(dr["max_month"]));
+                                            if (dr["avg_month"] != DBNull.Value)
+                                                avg_month_list.Add(Convert.ToDouble(dr["avg_month"]));
+                                        }
+                                        double min_night = double.NaN;
+                                        if (min_night_list.Count > 0)
+                                            min_night = WetStatistics.GetMean(min_night_list.ToArray());
+                                        double min_month = double.NaN;
+                                        if (min_month_list.Count > 0)
+                                            min_month = WetStatistics.GetMin(min_month_list.ToArray());
+                                        double max_month = double.NaN;
+                                        if (max_month_list.Count > 0)
+                                            max_month = WetStatistics.GetMax(max_month_list.ToArray());
+                                        double avg_month = double.NaN;
+                                        if (avg_month_list.Count > 0)
+                                            avg_month = WetStatistics.GetMean(avg_month_list.ToArray());
+                                        // Aggiungo il record mensile
+                                        DateTime record_date = new DateTime(first_year.Year, 12, 31);
+                                        wet_db.ExecCustomCommand("INSERT INTO measures_year_statistic VALUES ('" +
+                                            record_date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'," +
+                                            (double.IsNaN(min_night) ? "NULL" : min_night.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(min_month) ? "NULL" : min_month.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(max_month) ? "NULL" : max_month.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(avg_month) ? "NULL" : avg_month.ToString().Replace(",", ".")) + "," +
+                                            id_measure.ToString() + ")");
+                                        // Passo al mese successivo
+                                        first_year = first_year.AddYears(1);
+                                    }
+
+                                    #endregion
+                                }
+                            }
                         }
                         // Imposto il giorno di analisi (giorno precedente)
                         DateTime yesterday = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));
@@ -318,17 +432,138 @@ namespace WetLib
                         DataTable first_day_table = wet_db.ExecCustomQuery("SELECT * FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `day` DESC LIMIT 1");
                         if (first_day_table.Rows.Count == 1)
                             first_day = Convert.ToDateTime(first_day_table.Rows[0]["day"]);
-                        // Leggo l'ultimo giorno scritto sulle statistiche mensili e annuali
-                        DateTime first_month = DateTime.MinValue;
-                        DateTime first_year = DateTime.MinValue;
+                        // Calcolo statistiche mensili e annuali
                         if (WetDBConn.wetdb_model_version != WetDBConn.WetDBModelVersion.V1_0)
                         {
-                            DataTable first_month_table = wet_db.ExecCustomQuery("SELECT * FROM districts_month_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `month` DESC LIMIT 1");
-                            if (first_month_table.Rows.Count == 1)
-                                first_month = Convert.ToDateTime(first_month_table.Rows[0]["month"]);
-                            DataTable first_year_table = wet_db.ExecCustomQuery("SELECT * FROM districts_year_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `year` DESC LIMIT 1");
-                            if (first_year_table.Rows.Count == 1)
-                                first_year = Convert.ToDateTime(first_year_table.Rows[0]["year"]);
+                            // Controllo di avere nelle statistiche giornaliere almeno un record per il mese corrente
+                            DataTable last_day_statistic = wet_db.ExecCustomQuery("SELECT `day` FROM districts_day_statistic WHERE districts_id_districts = " + id_district.ToString() + " ORDER BY `day` DESC LIMIT 1");
+                            if (last_day_statistic.Rows.Count == 1)
+                            {
+                                DateTime last_day_record = Convert.ToDateTime(last_day_statistic.Rows[0]["day"]).Date;
+                                if (DateTime.Now.Date == last_day_record.AddDays(1.0d))
+                                {
+                                    // Leggo l'ultimo giorno scritto sulle statistiche mensili e annuali
+                                    DateTime update_timestamp = Convert.ToDateTime(district["update_timestamp"]);
+                                    DateTime first_month = update_timestamp.Date;
+                                    DateTime first_year = update_timestamp.Date;
+                                    DataTable first_month_table = wet_db.ExecCustomQuery("SELECT * FROM districts_month_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `month` DESC LIMIT 1");
+                                    if (first_month_table.Rows.Count == 1)
+                                        first_month = Convert.ToDateTime(first_month_table.Rows[0]["month"]).Date.AddMonths(1);
+                                    DataTable first_year_table = wet_db.ExecCustomQuery("SELECT * FROM districts_year_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `year` DESC LIMIT 1");
+                                    if (first_year_table.Rows.Count == 1)
+                                        first_year = Convert.ToDateTime(first_year_table.Rows[0]["year"]).Date.AddYears(1);
+                                    // Calcolo mese e anno precedenti
+                                    DateTime prec_month = DateTime.Now.Date.AddMonths(-1);
+                                    DateTime prec_year = DateTime.Now.Date.AddYears(-1);
+
+                                    #region Calcolo mensile
+
+                                    // Ciclo per il calcolo dei mesi
+
+                                    DateTime check_limit = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
+                                    while (first_month < check_limit)
+                                    {
+                                        // Acquisisco gli storici giornalieri
+                                        DataTable month_statistic_records = wet_db.ExecCustomQuery("SELECT `day`, `min_night`, `min_day`, `max_day`, `avg_day` FROM districts_day_statistic WHERE `day` >= '" +
+                                            first_month.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' AND `day` < '" +
+                                            first_month.AddMonths(1).ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' AND districts_id_districts = " + id_district.ToString());
+                                        // Calcolo su base mensile
+                                        List<double> min_night_list = new List<double>();
+                                        List<double> min_day_list = new List<double>();
+                                        List<double> max_day_list = new List<double>();
+                                        List<double> avg_day_list = new List<double>();
+                                        foreach (DataRow dr in month_statistic_records.Rows)
+                                        {
+                                            if (dr["min_night"] != DBNull.Value)
+                                                min_night_list.Add(Convert.ToDouble(dr["min_night"]));
+                                            if (dr["min_day"] != DBNull.Value)
+                                                min_day_list.Add(Convert.ToDouble(dr["min_day"]));
+                                            if (dr["max_day"] != DBNull.Value)
+                                                max_day_list.Add(Convert.ToDouble(dr["max_day"]));
+                                            if (dr["avg_day"] != DBNull.Value)
+                                                avg_day_list.Add(Convert.ToDouble(dr["avg_day"]));
+                                        }
+                                        double min_night = double.NaN;
+                                        if (min_night_list.Count > 0)
+                                            min_night = WetStatistics.GetMean(min_night_list.ToArray());
+                                        double min_month = double.NaN;
+                                        if (min_day_list.Count > 0)
+                                            min_month = WetStatistics.GetMin(min_day_list.ToArray());
+                                        double max_month = double.NaN;
+                                        if (max_day_list.Count > 0)
+                                            max_month = WetStatistics.GetMax(max_day_list.ToArray());
+                                        double avg_month = double.NaN;
+                                        if (avg_day_list.Count > 0)
+                                            avg_month = WetStatistics.GetMean(avg_day_list.ToArray());
+                                        // Aggiungo il record mensile
+                                        DateTime record_date = new DateTime(first_month.Year, first_month.Month, DateTime.DaysInMonth(first_month.Year, first_month.Month));
+                                        wet_db.ExecCustomCommand("INSERT INTO districts_month_statistic VALUES ('" +
+                                            record_date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'," +
+                                            (double.IsNaN(min_night) ? "NULL" : min_night.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(min_month) ? "NULL" : min_month.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(max_month) ? "NULL" : max_month.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(avg_month) ? "NULL" : avg_month.ToString().Replace(",", ".")) + "," +
+                                            id_district.ToString() + ")");
+                                        // Passo al mese successivo
+                                        first_month = first_month.AddMonths(1);
+                                    }
+
+                                    #endregion
+
+                                    #region Calcolo annuale
+
+                                    // Ciclo per il calcolo degli anni
+                                    check_limit = new DateTime(DateTime.Now.Year, 1, 1);
+                                    while (first_year < check_limit)
+                                    {
+                                        // Acquisisco gli storici mensili
+                                        DataTable year_statistic_records = wet_db.ExecCustomQuery("SELECT * FROM districts_month_statistic WHERE `month` >= '" +
+                                            first_year.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' AND `month` < '" +
+                                            first_year.AddYears(1).ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' AND districts_id_districts = " + id_district.ToString());
+                                        // Calcolo su base annuale
+                                        List<double> min_night_list = new List<double>();
+                                        List<double> min_month_list = new List<double>();
+                                        List<double> max_month_list = new List<double>();
+                                        List<double> avg_month_list = new List<double>();
+                                        foreach (DataRow dr in year_statistic_records.Rows)
+                                        {
+                                            if (dr["min_night"] != DBNull.Value)
+                                                min_night_list.Add(Convert.ToDouble(dr["min_night"]));
+                                            if (dr["min_month"] != DBNull.Value)
+                                                min_month_list.Add(Convert.ToDouble(dr["min_month"]));
+                                            if (dr["max_month"] != DBNull.Value)
+                                                max_month_list.Add(Convert.ToDouble(dr["max_month"]));
+                                            if (dr["avg_month"] != DBNull.Value)
+                                                avg_month_list.Add(Convert.ToDouble(dr["avg_month"]));
+                                        }
+                                        double min_night = double.NaN;
+                                        if (min_night_list.Count > 0)
+                                            min_night = WetStatistics.GetMean(min_night_list.ToArray());
+                                        double min_month = double.NaN;
+                                        if (min_month_list.Count > 0)
+                                            min_month = WetStatistics.GetMin(min_month_list.ToArray());
+                                        double max_month = double.NaN;
+                                        if (max_month_list.Count > 0)
+                                            max_month = WetStatistics.GetMax(max_month_list.ToArray());
+                                        double avg_month = double.NaN;
+                                        if (avg_month_list.Count > 0)
+                                            avg_month = WetStatistics.GetMean(avg_month_list.ToArray());
+                                        // Aggiungo il record mensile
+                                        DateTime record_date = new DateTime(first_year.Year, 12, 31);
+                                        wet_db.ExecCustomCommand("INSERT INTO districts_year_statistic VALUES ('" +
+                                            record_date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'," +
+                                            (double.IsNaN(min_night) ? "NULL" : min_night.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(min_month) ? "NULL" : min_month.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(max_month) ? "NULL" : max_month.ToString().Replace(",", ".")) + "," +
+                                            (double.IsNaN(avg_month) ? "NULL" : avg_month.ToString().Replace(",", ".")) + "," +
+                                            id_district.ToString() + ")");
+                                        // Passo al mese successivo
+                                        first_year = first_year.AddYears(1);
+                                    }
+
+                                    #endregion
+                                }
+                            }
                         }
                         // Imposto il giorno di analisi (giorno precedente)
                         DateTime yesterday = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));
