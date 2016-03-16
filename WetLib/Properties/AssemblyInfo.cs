@@ -36,7 +36,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Ingegnerie Toscane S.r.l.")]
 [assembly: AssemblyProduct("WetLib")]
-[assembly: AssemblyCopyright("Copyright (C) Ingegnerie Toscane 2014-2015")]
+[assembly: AssemblyCopyright("Copyright (C) Ingegnerie Toscane 2014-2016")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -58,5 +58,5 @@ using System.Runtime.InteropServices;
 // È possibile specificare tutti i valori oppure impostare valori predefiniti per i numeri relativi alla revisione e alla build 
 // utilizzando l'asterisco (*) come descritto di seguito:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("2.0.0.6")]
-[assembly: AssemblyFileVersion("2.0.0.6")]
+[assembly: AssemblyVersion("2.0.0.9")]
+[assembly: AssemblyFileVersion("2.0.0.9")]

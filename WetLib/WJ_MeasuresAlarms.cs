@@ -224,7 +224,7 @@ namespace WetLib
                     // Leggo l'ultimo allarme presente
                     AlarmStruct last_alarm = ReadLastAlarmDay(wet_db, id_measure, id_odbcdsn, DateTime.Now);
                     if (check_time > 0)
-                    {                        
+                    {
                         // Prendo le ultime ore di funzionamento
                         DateTime first = DateTime.Now.Subtract(new TimeSpan(check_time, 0, 0));
                         DateTime last = DateTime.Now;

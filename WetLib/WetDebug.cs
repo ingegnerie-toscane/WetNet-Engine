@@ -53,14 +53,11 @@ namespace WetLib
                 //Debugger.Break();
             }
             // Stampo nel log eventi
-            string log_name = Assembly.GetEntryAssembly().GetName().Name;
-            if (!EventLog.SourceExists(log_name))
-                EventLog.CreateEventSource(log_name, log_name);
             string message =
                 "SOURCE      : " + ex.Source + Environment.NewLine +
                 "MESSAGE     : " + ex.Message + Environment.NewLine +
                 "STACK TRACE : " + Environment.NewLine + ex.StackTrace;
-            EventLog.WriteEntry(log_name, message, EventLogEntryType.Error);
+            WetUtility.WriteEventLog(message, EventLogEntryType.Error);            
         }
 
         #endregion

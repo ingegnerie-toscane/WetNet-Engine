@@ -126,10 +126,18 @@ namespace WetLib
                 // Eseguo il job
                 try
                 {
+                    // Avvio un conteggio
+                    long start_time = DateTime.Now.Ticks;
                     // Metodo
                     DoJob();
                     // Attesa
-                    Sleep(job_sleep_time);
+                    TimeSpan elapsed = new TimeSpan(DateTime.Now.Ticks - start_time);
+                    TimeSpan sleep_time = new TimeSpan(0, 0, 0, 0, job_sleep_time);
+                    double difference = sleep_time.TotalMilliseconds - elapsed.TotalMilliseconds;
+                    if (difference > 1.0d)
+                        Sleep(Convert.ToInt32(difference));
+                    else
+                        Sleep();
                 }
                 catch (Exception ex)
                 {

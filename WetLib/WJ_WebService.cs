@@ -140,8 +140,7 @@ namespace WetLib
                                     " AND `timestamp` <= '" + stop.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
                                     " ORDER BY `timestamp` ASC");
                                 if (dt.Rows.Count > 0)
-                                {
-                                    
+                                {                                    
                                     // Ciclo per tutti i dati letti
                                     foreach (DataRow dr in dt.Rows)
                                     {
@@ -159,11 +158,11 @@ namespace WetLib
                             {
                                 WetDebug.GestException(ex0);
                             }
-                        }
+                        }                        
                         ret += "</Records>";
                     }
                     else
-                        ret += "<Error>No entities founds!</Error>";
+                        ret += "<Error>No entities founds!</Error>";                    
                 }
                 catch (Exception ex)
                 {
@@ -282,7 +281,7 @@ namespace WetLib
             public Stream GetGISAllFieldPointsDayStatistics(string start_date, string stop_date)
             {
                 string ret = "<?xml version =\"1.0\"?>";
-
+                
                 try
                 {
                     DataTable measures;

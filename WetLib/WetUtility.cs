@@ -30,6 +30,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Data;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace WetLib
 {
@@ -158,6 +160,29 @@ namespace WetLib
             }
 
             return imt;
+        }
+
+        /// <summary>
+        /// Restituisce il grado massimo di parallelismo
+        /// </summary>
+        /// <returns>Grado massimo di parallelismo</returns>
+        public static int GetMaxDegreeOfParallelism()
+        {
+            return Environment.ProcessorCount;
+        }
+
+        /// <summary>
+        /// Effettuo una stampa nel log eventi
+        /// </summary>
+        /// <param name="message">Messaggio da scrivere</param>
+        /// <param name="type">Tipo di messaggio</param>
+        public static void WriteEventLog(string message, EventLogEntryType type)
+        {
+            // Stampo nel log eventi
+            string log_name = Assembly.GetEntryAssembly().GetName().Name;
+            if (!EventLog.SourceExists(log_name))
+                EventLog.CreateEventSource(log_name, log_name);            
+            EventLog.WriteEntry(log_name, message, type);
         }
 
         #endregion

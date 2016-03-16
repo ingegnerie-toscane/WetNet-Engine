@@ -220,12 +220,12 @@ namespace WetLib
                     return;
                 // Acquisisco tutti i distretti configurati
                 DataTable districts = wet_db.ExecCustomQuery("SELECT * FROM districts");
-                // Ciclo per tutti i distretti
+                // Ciclo per tutti i distretti                
                 foreach (DataRow district in districts.Rows)
                 {
                     // Controllo se è in corso il reset di un distretto
                     if (wet_db.IsLocked("districts"))
-                        return;                    
+                        return;
                     // Acquisisco l'ID del distretto
                     int id_district = Convert.ToInt32(district["id_districts"]);
                     // Acquisisco lo stato di reset
@@ -246,6 +246,27 @@ namespace WetLib
                     double statistic_high_band = Convert.ToDouble(district["ev_statistic_high_band"]);
                     // Acquisisco la banda inferiore statistica
                     double statistic_low_band = Convert.ToDouble(district["ev_statistic_low_band"]);
+                    // Controllo che ci sia almeno un record nello storico delle bande
+                    DataTable dt_bands = wet_db.ExecCustomQuery("SELECT * FROM districts_bands_history WHERE districts_id_districts = " + id_district.ToString() + 
+                        " ORDER BY `timestamp` DESC LIMIT 1");
+                    double last_high_band;
+                    double last_low_band;
+                    if (dt_bands.Rows.Count == 0)
+                    {
+                        // Aggiungo le bande attuali nella tabella "districts_bands_history"
+                        wet_db.ExecCustomCommand("INSERT INTO districts_bands_history VALUES ('" + DateTime.Now.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                            "', " + high_band.ToString().Replace(",", ".") + ", " + low_band.ToString().Replace(",", ".") + ", " + id_district.ToString() + ")");
+                        last_high_band = high_band;
+                        last_low_band = low_band;
+                    }
+                    else
+                    {
+                        last_high_band = Convert.ToDouble(dt_bands.Rows[0]["high_band"]);
+                        last_low_band = Convert.ToDouble(dt_bands.Rows[0]["low_band"]);
+                        if((last_high_band != high_band) || (last_low_band != low_band))
+                            wet_db.ExecCustomCommand("INSERT INTO districts_bands_history VALUES ('" + DateTime.Now.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                            "', " + high_band.ToString().Replace(",", ".") + ", " + low_band.ToString().Replace(",", ".") + ", " + id_district.ToString() + ")");
+                    }
                     // Acquisisco tipo di variabile statistica da utilizzare
                     DistrictStatisticMeasureTypes measure_type = (DistrictStatisticMeasureTypes)(Convert.ToInt32(district["ev_variable_type"]));
                     // Acquisisco l'ultimo giorno valido
@@ -288,7 +309,7 @@ namespace WetLib
                     {
                         // Imposto il giorno in analisi
                         DateTime actual = DateTime.Now.Subtract(new TimeSpan(days, 0, 0, 0)).Date;
-                        
+
                         #region Gestione distretto fuori controllo
 
                         // Acquisisco il record statistico per il giorno corrente
@@ -325,17 +346,23 @@ namespace WetLib
                             }
                         }
 
-                        if (days > 0)                        
-                        {                            
+                        if (days > 0)
+                        {
                             // Creo un vettore delle misure in allarme
                             List<WJ_MeasuresAlarms.AlarmStruct> alarms = new List<WJ_MeasuresAlarms.AlarmStruct>();
                             // Controllo se ci sono allarmi sulle misure
-                            DataTable measures_of_district_table = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `measures_connections_id_odbcdsn`, `type` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString());
+                            DataTable measures_of_district_table;
+                            if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                                measures_of_district_table = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `measures_connections_id_odbcdsn`, `type` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString());
+                            else
+                                measures_of_district_table = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString());
                             foreach (DataRow measure in measures_of_district_table.Rows)
                             {
                                 // Acquisisco l'ID della misura
                                 int id_measure = Convert.ToInt32(measure["measures_id_measures"]);
-                                int id_odbcdsn = Convert.ToInt32(measure["measures_connections_id_odbcdsn"]);
+                                int id_odbcdsn = -1;
+                                if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                                    id_odbcdsn = Convert.ToInt32(measure["measures_connections_id_odbcdsn"]);
                                 // Non gestisco le misure di pressione per l'allarme OUT_OF_CONTROL
                                 MeasureTypes m_type = (MeasureTypes)Convert.ToInt32(measure["type"]);
                                 if (m_type == MeasureTypes.PRESSURE)
@@ -469,7 +496,8 @@ namespace WetLib
                                      (ev_last.duration >= last_good_samples) &&
                                      (last_change < ev_last.day) &&
                                      (statistic_low_band != plb) && (statistic_high_band != phb)) ||
-                                    ((ev_enable == true) && (low_band == 0.0d) && (high_band == 0.0d)))
+                                    ((ev_enable == true) && (low_band == 0.0d) && (high_band == 0.0d) && 
+                                     (plb != 0.0d) && (phb != 0.0d)))
                                 {
                                     // Aggiorno la tabella distretti
                                     wet_db.ExecCustomCommand("UPDATE districts SET ev_high_band = " + phb.ToString().Replace(',', '.') +
@@ -679,7 +707,7 @@ namespace WetLib
                                         return;
                                     Sleep();
                                 }
-                            }                            
+                            }
 
                             #endregion
                         }
@@ -744,12 +772,13 @@ namespace WetLib
                                      (ev_last.duration >= last_good_samples) &&
                                      (last_change < ev_last.day) &&
                                      (statistic_low_band != plb) && (statistic_high_band != phb)) ||
-                                    ((ev_enable == true) && (low_band == 0.0d) && (high_band == 0.0d)))
+                                    ((ev_enable == true) && (low_band == 0.0d) && (high_band == 0.0d) && 
+                                     (plb != 0.0d) && (phb != 0.0d)))
                                 {
                                     // Aggiorno la tabella distretti
                                     wet_db.ExecCustomCommand("UPDATE districts SET ev_high_band = " + phb.ToString().Replace(',', '.') +
                                         ", ev_low_band = " + plb.ToString().Replace(',', '.') + " WHERE id_districts = " + id_district.ToString());
-                                    // Inserisco i nuovi valori nella tabella dei cambiamenti
+                                    // Inserisco i nuovi valori nella tabella dei cambiamenti se differenti
                                     wet_db.ExecCustomCommand("INSERT INTO districts_bands_history VALUES ('" +
                                         DateTime.Now.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', " +
                                         phb.ToString().Replace(',', '.') + ", " +
@@ -933,7 +962,7 @@ namespace WetLib
                                         ReportEvent(ev, min_detectable_loss, min_detectable_rank);
                                     }
                                 }
-                            }                                                        
+                            }
 
                             #endregion
                         }
@@ -1203,137 +1232,145 @@ namespace WetLib
         /// <param name="min_detectable_rank">Soglia di invio sul rank delle perdite</param>
         void ReportEvent(Event ev, double min_detectable_loss, double min_detectable_rank)
         {
-            if ((ev.type != EventTypes.NO_EVENT) && (ev.day.Date == DateTime.Now.Subtract(new TimeSpan(1, 0, 0, 0)).Date))
+            try
             {
-                // Controllo l'evento del giorno precedente
-                Event[] events;
-                ReadLastPastEvents(ev.id_district, DateTime.Now, 2, out events);
-                // Controllo che siano restituiti 2 valori
-                if ((events.Length == 2) || (ev.type == EventTypes.OUT_OF_CONTROL))
+                if ((ev.type != EventTypes.NO_EVENT) && (ev.day.Date == DateTime.Now.Subtract(new TimeSpan(1, 0, 0, 0)).Date))
                 {
-                    // Per l'invio dell'evento è necessario inoltre:
-                    // 1 - Che l'evento attuale sia un evento di perdita o di fuori controllo
-                    // 2 - Che l'evento precedente sia diverso dall'attuale
-                    if ((
-                        ((ev.type == EventTypes.POSSIBLE_LOSS) && ((ev.delta >= min_detectable_loss) || (ev.ranking >= min_detectable_rank))) || 
-                        (ev.type == EventTypes.OUT_OF_CONTROL)) && 
-                        (ev.type != events[0].type))
+                    // Controllo l'evento del giorno precedente
+                    Event[] events;
+                    ReadLastPastEvents(ev.id_district, DateTime.Now, 2, out events);
+                    // Controllo che siano restituiti 2 valori
+                    if ((events.Length == 2) || (ev.type == EventTypes.OUT_OF_CONTROL))
                     {
-                        // Acquisisco il nome per il distretto
-                        DataTable dt = wet_db.ExecCustomQuery("SELECT `name` FROM districts WHERE id_districts = " + ev.id_district);
-                        string name = string.Empty;
-                        if (dt.Rows.Count == 1)
-                            name += Convert.ToString(dt.Rows[0]["name"]);
-                        // Compongo la stringa dell'evento
-                        string sms_msg =
-                            "EventType:";
-                        string mail_msg =
-                            "Event type   : ";
-                        switch (ev.type)
+                        // Per l'invio dell'evento è necessario inoltre:
+                        // 1 - Che l'evento attuale sia un evento di perdita o di fuori controllo
+                        // 2 - Che l'evento precedente sia diverso dall'attuale
+                        // 3 - Che l'evento sia un incremento anomalo ma con 'ev_delta' e 'ev_ranking' maggiori delle soglie stabilite
+                        if (((ev.type == EventTypes.POSSIBLE_LOSS) ||
+                            ((ev.type == EventTypes.ANOMAL_INCREASE) && ((ev.delta >= min_detectable_loss) || (ev.ranking >= min_detectable_rank)) && (min_detectable_loss > 0.0d) && (min_detectable_rank > 0.0d)) ||
+                            (ev.type == EventTypes.OUT_OF_CONTROL)) &&
+                            (ev.type != events[0].type))
                         {
-                            case EventTypes.ANOMAL_INCREASE:
-                                mail_msg += "Anomal flow rate increase detected!";
-                                sms_msg += "flow+";
-                                break;
-
-                            case EventTypes.ANOMAL_DECREASE:
-                                mail_msg += "Anomal flow rate decrease detected!";
-                                sms_msg += "flow-";
-                                break;
-
-                            case EventTypes.POSSIBLE_LOSS:
-                                mail_msg += "Possible water loss detected!";
-                                sms_msg += "loss";
-                                break;
-
-                            case EventTypes.POSSIBLE_GAIN:
-                                mail_msg += "Possible water gain detected!";
-                                sms_msg += "gain";
-                                break;
-
-                            default:
-                                mail_msg += "Invalid!";
-                                sms_msg += "invalid";
-                                break;
-                        }
-                        mail_msg += Environment.NewLine +
-                            "Delta        : " + ev.delta.ToString("F", CultureInfo.InvariantCulture) + " l/s" + Environment.NewLine +
-                            "District     : " + name + " (#" + ev.id_district + ")" + Environment.NewLine +
-                            "Date         : " + ev.day.ToString("yyyy-MM-dd") + Environment.NewLine +
-                            "Duration     : " + ev.duration + " days" + Environment.NewLine +
-                            "Variable     : ";
-                        sms_msg += " Delta:" + ev.delta.ToString("F", CultureInfo.InvariantCulture) +
-                            " District:" + ev.id_district +
-                            " Date:" + ev.day.ToString("yyyy-MM-dd") +
-                            " Duration:" + ev.duration +
-                            " Variable:";
-                        switch (ev.measure_type)
-                        {
-                            case DistrictStatisticMeasureTypes.MIN_NIGHT:
-                                mail_msg += "Min. Night";
-                                sms_msg += "MinNight";
-                                break;
-
-                            case DistrictStatisticMeasureTypes.MIN_DAY:
-                                mail_msg += "Min. Day";
-                                sms_msg += "MinDay";
-                                break;
-
-                            case DistrictStatisticMeasureTypes.AVG_DAY:
-                                mail_msg += "Avg. Day";
-                                sms_msg += "AvgDay";
-                                break;
-
-                            case DistrictStatisticMeasureTypes.MAX_DAY:
-                                mail_msg += "Max. Day";
-                                sms_msg += "MaxDay";
-                                break;
-
-                            case DistrictStatisticMeasureTypes.STATISTICAL_PROFILE:
-                                mail_msg += "Statistical profile";
-                                sms_msg += "StatProfile";
-                                break;
-
-                            default:
-                                mail_msg += "Unknown";
-                                sms_msg += "Unknown";
-                                break;
-                        }
-                        mail_msg += Environment.NewLine +
-                            "Actual value : " + ev.value.ToString("F", CultureInfo.InvariantCulture) + " l/s" + Environment.NewLine + Environment.NewLine +
-                            "###### Automatic message, please don't reply! ######";
-                        sms_msg += " ActualValue:" + ev.value.ToString("F", CultureInfo.InvariantCulture);
-                        // Acquisisco la lista di tutti gli utenti abilitati alla notifica sul distretto
-                        dt = wet_db.ExecCustomQuery("SELECT * FROM users_has_districts INNER JOIN users ON users_has_districts.users_idusers = users.idusers WHERE districts_id_districts = " + ev.id_district + " AND events_notification = 1");
-                        foreach (DataRow dr in dt.Rows)
-                        {
-                            // Controllo che l'utente sia abilitato all'invio delle e-mail
-                            if (Convert.ToBoolean(dr["email_enabled"]))
+                            // Acquisisco il nome per il distretto
+                            DataTable dt = wet_db.ExecCustomQuery("SELECT `name` FROM districts WHERE id_districts = " + ev.id_district);
+                            string name = string.Empty;
+                            if (dt.Rows.Count == 1)
+                                name += Convert.ToString(dt.Rows[0]["name"]);
+                            // Compongo la stringa dell'evento
+                            string sms_msg =
+                                "EventType:";
+                            string mail_msg =
+                                "Event type   : ";
+                            switch (ev.type)
                             {
-                                // Controllo che il campo e-mail non sia vuoto
-                                string mail_address = Convert.ToString(dr["email"]);
-                                if (mail_address != null)
+                                case EventTypes.ANOMAL_INCREASE:
+                                    mail_msg += "Anomal flow rate increase detected!";
+                                    sms_msg += "flow+";
+                                    break;
+
+                                case EventTypes.ANOMAL_DECREASE:
+                                    mail_msg += "Anomal flow rate decrease detected!";
+                                    sms_msg += "flow-";
+                                    break;
+
+                                case EventTypes.POSSIBLE_LOSS:
+                                    mail_msg += "Possible water loss detected!";
+                                    sms_msg += "loss";
+                                    break;
+
+                                case EventTypes.POSSIBLE_GAIN:
+                                    mail_msg += "Possible water gain detected!";
+                                    sms_msg += "gain";
+                                    break;
+
+                                default:
+                                    mail_msg += "Invalid!";
+                                    sms_msg += "invalid";
+                                    break;
+                            }
+                            mail_msg += Environment.NewLine +
+                                "Delta        : " + ev.delta.ToString("F", CultureInfo.InvariantCulture) + " l/s" + Environment.NewLine +
+                                "District     : " + name + " (#" + ev.id_district + ")" + Environment.NewLine +
+                                "Date         : " + ev.day.ToString("yyyy-MM-dd") + Environment.NewLine +
+                                "Duration     : " + ev.duration + " days" + Environment.NewLine +
+                                "Variable     : ";
+                            sms_msg += " Delta:" + ev.delta.ToString("F", CultureInfo.InvariantCulture) +
+                                " District:" + ev.id_district +
+                                " Date:" + ev.day.ToString("yyyy-MM-dd") +
+                                " Duration:" + ev.duration +
+                                " Variable:";
+                            switch (ev.measure_type)
+                            {
+                                case DistrictStatisticMeasureTypes.MIN_NIGHT:
+                                    mail_msg += "Min. Night";
+                                    sms_msg += "MinNight";
+                                    break;
+
+                                case DistrictStatisticMeasureTypes.MIN_DAY:
+                                    mail_msg += "Min. Day";
+                                    sms_msg += "MinDay";
+                                    break;
+
+                                case DistrictStatisticMeasureTypes.AVG_DAY:
+                                    mail_msg += "Avg. Day";
+                                    sms_msg += "AvgDay";
+                                    break;
+
+                                case DistrictStatisticMeasureTypes.MAX_DAY:
+                                    mail_msg += "Max. Day";
+                                    sms_msg += "MaxDay";
+                                    break;
+
+                                case DistrictStatisticMeasureTypes.STATISTICAL_PROFILE:
+                                    mail_msg += "Statistical profile";
+                                    sms_msg += "StatProfile";
+                                    break;
+
+                                default:
+                                    mail_msg += "Unknown";
+                                    sms_msg += "Unknown";
+                                    break;
+                            }
+                            mail_msg += Environment.NewLine +
+                                "Actual value : " + ev.value.ToString("F", CultureInfo.InvariantCulture) + " l/s" + Environment.NewLine + Environment.NewLine +
+                                "###### Automatic message, please don't reply! ######";
+                            sms_msg += " ActualValue:" + ev.value.ToString("F", CultureInfo.InvariantCulture);
+                            // Acquisisco la lista di tutti gli utenti abilitati alla notifica sul distretto
+                            dt = wet_db.ExecCustomQuery("SELECT * FROM users_has_districts INNER JOIN users ON users_has_districts.users_idusers = users.idusers WHERE districts_id_districts = " + ev.id_district + " AND events_notification = 1");
+                            foreach (DataRow dr in dt.Rows)
+                            {
+                                // Controllo che l'utente sia abilitato all'invio delle e-mail
+                                if (Convert.ToBoolean(dr["email_enabled"]))
                                 {
-                                    if (mail_address != string.Empty)
+                                    // Controllo che il campo e-mail non sia vuoto
+                                    string mail_address = Convert.ToString(dr["email"]);
+                                    if (mail_address != null)
                                     {
-                                        // Compongo la mail
-                                        SmtpClient smtp_client = new SmtpClient();
-                                        smtp_client.Host = cfg.smtp_server;
-                                        smtp_client.Port = cfg.smtp_server_port;
-                                        smtp_client.EnableSsl = cfg.smtp_use_ssl;
-                                        smtp_client.Credentials = new NetworkCredential(cfg.smtp_username, cfg.smtp_password);
-                                        MailMessage msg = new MailMessage();
-                                        msg.From = new MailAddress(cfg.smtp_username);
-                                        msg.To.Add(mail_address);
-                                        msg.Subject = "WetNet event report";
-                                        msg.Body = mail_msg;
-                                        smtp_client.Send(msg);
+                                        if (mail_address != string.Empty)
+                                        {
+                                            // Compongo la mail
+                                            SmtpClient smtp_client = new SmtpClient();
+                                            smtp_client.Host = cfg.smtp_server;
+                                            smtp_client.Port = cfg.smtp_server_port;
+                                            smtp_client.EnableSsl = cfg.smtp_use_ssl;
+                                            smtp_client.Credentials = new NetworkCredential(cfg.smtp_username, cfg.smtp_password);
+                                            MailMessage msg = new MailMessage();
+                                            msg.From = new MailAddress(cfg.smtp_username);
+                                            msg.To.Add(mail_address);
+                                            msg.Subject = "WetNet event report";
+                                            msg.Body = mail_msg;
+                                            smtp_client.Send(msg);
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
+            }
+            catch (Exception ex)
+            {
+                WetDebug.GestException(ex);
             }
         }
 

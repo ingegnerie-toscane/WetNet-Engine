@@ -190,7 +190,7 @@ namespace WetLib
                     {
                         string strumentation_model = Convert.ToString(measure["strumentation_model"] == DBNull.Value ? string.Empty : measure["strumentation_model"]);
                         if (strumentation_model.Contains("*#") && (strumentation_model.Contains("#*")))
-                        {                            
+                        {
                             try
                             {
                                 string tmpstr = strumentation_model.Remove(0, strumentation_model.IndexOf("*#", 0) + 2);
@@ -211,10 +211,10 @@ namespace WetLib
                             multiplication_factor = 1.0d;
                     }
                     // Popolo le coordinate database per la misura
-                    MeasureDBCoord_Struct measure_coord;                    
+                    MeasureDBCoord_Struct measure_coord;
                     measure_coord.odbc_connection = Convert.ToString(connections.Rows.Find(id_odbc_dsn)["odbc_dsn"]);
                     measure_coord.username = (connections.Rows.Find(id_odbc_dsn)["username"] == DBNull.Value ? null : Convert.ToString(connections.Rows.Find(id_odbc_dsn)["username"]));
-                    measure_coord.password = (connections.Rows.Find(id_odbc_dsn)["password"] == DBNull.Value ? null : Convert.ToString(connections.Rows.Find(id_odbc_dsn)["password"]));                    
+                    measure_coord.password = (connections.Rows.Find(id_odbc_dsn)["password"] == DBNull.Value ? null : Convert.ToString(connections.Rows.Find(id_odbc_dsn)["password"]));
                     measure_coord.table_name = Convert.ToString(measure["table_name"]);
                     measure_coord.timestamp_column = Convert.ToString(measure["table_timestamp_column"]);
                     measure_coord.value_column = Convert.ToString(measure["table_value_column"]);
@@ -236,7 +236,23 @@ namespace WetLib
                         }
                     }
                     else
+                    {
                         mst = (MeasuresSourcesTypes)Convert.ToInt32(measure["source"]);
+                        if (mst == MeasuresSourcesTypes.MANUALLY_INSERTED)
+                        {
+                            // Imposto le coordinate per la tabella interna
+                            measure_coord.table_name = "meter_readings";
+                            measure_coord.timestamp_column = "timestamp";
+                            measure_coord.value_column = "value";
+                            measure_coord.relational_id_column = "measures_id_measures";
+                            measure_coord.relational_id_value = id_measure.ToString();
+                            measure_coord.relational_id_type = WetDBConn.PrimaryKeyColumnTypes.INT;
+                        }
+                    }                    
+                    // Estraggo il timestamp dell'ultimo valore scritto nel database WetNet
+                    DateTime last_dest = GetLastDestSample(id_measure);
+                    if (last_dest == DateTime.MinValue)
+                        last_dest = start_date;
                     // Inizio l'acquisiszione dei dati
                     DateTime last_source = DateTime.MinValue;
                     WetDBConn source_db = null;
@@ -245,17 +261,13 @@ namespace WetLib
                         // Istanzio la connessione al database sorgente
                         source_db = new WetDBConn(measure_coord.odbc_connection, measure_coord.username, measure_coord.password, false);
                         // Estraggo il timestamp dell'ultimo valore scritto nel database sorgente
-                        last_source = GetLastSourceSample(source_db, start_date, measure_coord);
+                        last_source = GetLastSourceSample(source_db, last_dest, measure_coord);
                     }
                     else
                     {
                         // In una misura fittizia ho sempre tutti i dati ;)
                         last_source = DateTime.Now;
                     }
-                    // Estraggo il timestamp dell'ultimo valore scritto nel database WetNet
-                    DateTime last_dest = GetLastDestSample(id_measure);
-                    if (last_dest == DateTime.MinValue)
-                        last_dest = start_date;
                     // Controllo se ci sono campioni da acquisire
                     if (last_dest < last_source)
                     {
@@ -315,7 +327,7 @@ namespace WetLib
                             // Nel mezzo interpolerò...
                             samples.Rows.Add(DateTime.Now, fixed_value);
                         }
-                        
+
                         // Se la tabella samples non contiene campioni continuo
                         if (samples.Rows.Count == 0)
                             continue;
@@ -464,6 +476,8 @@ namespace WetLib
                         //"AND wwResolution = " + ((int)(config.interpolation_time * 60 * 1000)).ToString() + " " +
                         //"AND wwRetrievalMode = 'Cyclic' " +
                         "AND wwRetrievalMode = 'Full' " +
+                        "AND wwCycleCount = " + WetDBConn.MAX_RECORDS_IN_QUERY.ToString() + " " +
+                        "AND wwVersion = 'Latest'" +
                         "AND DateTime > CONVERT(datetime, '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', 120) " +
                         "AND DateTime <= CONVERT(datetime, '" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', 120) ORDER BY " +
                         measure_coord.timestamp_column + (order == WetDBConn.OrderTypes.ASC ? " ASC" : " DESC");

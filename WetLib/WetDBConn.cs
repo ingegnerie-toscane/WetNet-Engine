@@ -61,9 +61,14 @@ namespace WetLib
         public const string MYSQL_TIME_FORMAT = @"hh\:mm\:ss";
 
         /// <summary>
+        /// Numero massimo di record in una query
+        /// </summary>
+        public const int MAX_RECORDS_IN_QUERY = 65536;
+
+        /// <summary>
         /// Data di partenza
         /// </summary>
-        public static readonly DateTime START_DATE = new DateTime(2000, 1, 1, 0, 0, 0);
+        public static readonly DateTime START_DATE = new DateTime(2000, 1, 1, 0, 0, 0);       
 
         #endregion
 
@@ -347,16 +352,26 @@ namespace WetLib
 
             using (OdbcConnection conn = new OdbcConnection(connection_string))
             {
-                conn.Open();
-                using (OdbcCommand cmd = new OdbcCommand(query, conn))
+                try
                 {
-                    cmd.CommandTimeout = 360;   // 6 minuti
-                    using (OdbcDataAdapter da = new OdbcDataAdapter(cmd))
+                    conn.Open();
+                    using (OdbcCommand cmd = new OdbcCommand(query, conn))
                     {
-                        da.Fill(dt);
+                        cmd.CommandTimeout = 360;   // 6 minuti
+                        using (OdbcDataAdapter da = new OdbcDataAdapter(cmd))
+                        {
+                            da.Fill(dt);
+                        }
                     }
                 }
-                conn.Close();
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+                finally
+                {
+                    conn.Close();
+                }
             }
 
             return dt;

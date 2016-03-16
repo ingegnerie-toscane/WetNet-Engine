@@ -129,7 +129,7 @@ namespace WetLib
             try
             {
                 // Acquisisco tutte le misure configurate
-                DataTable measures = wet_db.ExecCustomQuery("SELECT * FROM measures");
+                DataTable measures = wet_db.ExecCustomQuery("SELECT * FROM measures");                
                 foreach (DataRow measure in measures.Rows)
                 {
                     try
@@ -141,7 +141,7 @@ namespace WetLib
                         DateTime first_day = DateTime.MinValue;
                         DataTable first_day_table = wet_db.ExecCustomQuery("SELECT * FROM measures_day_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `day` DESC LIMIT 1");
                         if (first_day_table.Rows.Count == 1)
-                            first_day = Convert.ToDateTime(first_day_table.Rows[0]["day"]);                        
+                            first_day = Convert.ToDateTime(first_day_table.Rows[0]["day"]);
                         // Calcolo statistiche mensili e annuali
                         if (WetDBConn.wetdb_model_version != WetDBConn.WetDBModelVersion.V1_0)
                         {
@@ -169,7 +169,7 @@ namespace WetLib
                                     #region Calcolo mensile
 
                                     // Ciclo per il calcolo dei mesi
-                                    
+
                                     DateTime check_limit = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
                                     while (first_month < check_limit)
                                     {
@@ -278,7 +278,7 @@ namespace WetLib
                         // Imposto il giorno di analisi (giorno precedente)
                         DateTime yesterday = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));
                         if (first_day == yesterday)
-                            continue;        
+                            continue;
                         // Controllo se ho almeno un campione per il giorno corrente, altrimenti esco
                         DataTable last_samples = wet_db.ExecCustomQuery("SELECT * FROM data_measures WHERE `measures_id_measures` = " + id_measure.ToString() + " AND `timestamp` >= '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' ORDER BY `timestamp` LIMIT 1");
                         if (last_samples.Rows.Count == 0)
@@ -625,7 +625,7 @@ namespace WetLib
                             double min_night = double.NaN;
                             double real_leakage = double.NaN;
                             double nfcu = Convert.ToDouble(district["household_night_use"]) + Convert.ToDouble(district["not_household_night_use"]);
-                            DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM data_districts WHERE `districts_id_districts` = " + id_district.ToString() + " AND (`timestamp` >= '" + dt_min_night_start_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_min_night_stop_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "') ORDER BY `timestamp` ASC");                            
+                            DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM data_districts WHERE `districts_id_districts` = " + id_district.ToString() + " AND (`timestamp` >= '" + dt_min_night_start_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_min_night_stop_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "') ORDER BY `timestamp` ASC");
                             if (dt.Rows.Count > 0)
                                 min_night = WetStatistics.GetMean(WetUtility.GetDoubleValuesFromColumn(dt, "value"));
                             if (!double.IsNaN(min_night))
@@ -778,7 +778,7 @@ namespace WetLib
                                 double val = 0.0d;
                                 dt.PrimaryKey = new DataColumn[] { dt.Columns["timestamp"] };
                                 DataRow drs = dt.Rows.Find(ts);
-                                if(drs != null)
+                                if (drs != null)
                                     val = Convert.ToDouble(drs["value"]);
                                 double theoretical = val - loss;
                                 loss_profile.Add(ts, loss);

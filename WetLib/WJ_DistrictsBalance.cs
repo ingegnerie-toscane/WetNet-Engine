@@ -126,7 +126,7 @@ namespace WetLib
                         xchange.Columns.Add("reliable", typeof(bool));
                     xchange.Columns.Add("plus", typeof(double));
                     xchange.Columns.Add("minus", typeof(double));
-                    xchange.PrimaryKey = new DataColumn[] { xchange.Columns["timestamp"] };                                        
+                    xchange.PrimaryKey = new DataColumn[] { xchange.Columns["timestamp"] };
                     // Acquisisco tutte le misure configurate per il distretto, eccetto le pressioni
                     DataTable measures = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND ((measures.type = 0) OR (measures.type = 2))");
                     measures.PrimaryKey = new DataColumn[] { measures.Columns["measures_id_measures"] };
@@ -181,7 +181,7 @@ namespace WetLib
                     tmp = wet_db.ExecCustomQuery(query);
                     // Creo una tabella unita per timestamp
                     foreach (DataRow dr in tmp.Rows)
-                    {                        
+                    {
                         // Definisco la misura letta nella riga
                         int id_measure = Convert.ToInt32(dr["measures_id_measures"]);
                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
