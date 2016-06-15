@@ -251,7 +251,7 @@ namespace WetLib
                         " ORDER BY `timestamp` DESC LIMIT 1");
                     double last_high_band;
                     double last_low_band;
-                    if (dt_bands.Rows.Count == 0)
+                    if ((dt_bands.Rows.Count == 0) && ((low_band != 0.0d) && (high_band != 0.0d)))
                     {
                         // Aggiungo le bande attuali nella tabella "districts_bands_history"
                         wet_db.ExecCustomCommand("INSERT INTO districts_bands_history VALUES ('" + DateTime.Now.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
@@ -263,7 +263,7 @@ namespace WetLib
                     {
                         last_high_band = Convert.ToDouble(dt_bands.Rows[0]["high_band"]);
                         last_low_band = Convert.ToDouble(dt_bands.Rows[0]["low_band"]);
-                        if((last_high_band != high_band) || (last_low_band != low_band))
+                        if ((last_high_band != high_band) || (last_low_band != low_band))
                             wet_db.ExecCustomCommand("INSERT INTO districts_bands_history VALUES ('" + DateTime.Now.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
                             "', " + high_band.ToString().Replace(",", ".") + ", " + low_band.ToString().Replace(",", ".") + ", " + id_district.ToString() + ")");
                     }

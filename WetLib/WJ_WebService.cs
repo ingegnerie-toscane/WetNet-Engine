@@ -8,6 +8,7 @@ using System.ServiceModel.Web;
 using System.ServiceModel.Description;
 using System.Data;
 using System.IO;
+using System.Security.Cryptography;
 
 namespace WetLib
 {
@@ -49,6 +50,14 @@ namespace WetLib
             [OperationContract]
             [WebGet]
             Stream GetFieldPointsObjectTypes();
+
+            [OperationContract]
+            [WebGet]
+            Stream ResetDistrictData(string id_district, string date, string check);
+
+            [OperationContract]
+            [WebGet]
+            Stream GetMonthsAverageOfYear(string id_district, string year);
 
             #endregion
         }
@@ -568,6 +577,147 @@ namespace WetLib
                     ret += "</ObjectType>";
                 }
                 ret += "</ObjectTypes>";
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.ContentType = "text/plain";
+                return new MemoryStream(Encoding.Default.GetBytes(ret));
+            }
+
+            /// <summary>
+            /// Resetta tutti i dati storici associati al distretto specificato
+            /// </summary>
+            /// <param name="id_district">ID univoco del distretto</param>
+            /// <param name="date">Data di inizio da cui effettuare la cancellazione</param>
+            /// <param name="check">Checksum</param>
+            /// <returns>Restituisce il buon esito dell'operazione</returns>
+            public Stream ResetDistrictData(string id_district, string date, string check)
+            {
+                string ret = "<?xml version =\"1.0\"?>";
+                int ret_value = 0;
+
+                try
+                {
+                    // Controllo il codice di checksum
+                    MD5Cng md5 = new MD5Cng();
+                    byte[] hash_vector = md5.ComputeHash(Encoding.ASCII.GetBytes(date));
+                    string hash = string.Empty;
+                    foreach (byte bt in hash_vector)
+                        hash += bt.ToString("X2");
+                    if (check.ToLower() == hash.ToLower())
+                    {
+                        // Acquisisco i parametri
+                        int id = Convert.ToInt32(id_district);
+                        DateTime start_date = Convert.ToDateTime(date).Date;
+                        DateTime start_month = new DateTime(start_date.Year, start_date.Month, DateTime.DaysInMonth(start_date.Year, start_date.Month));
+                        DateTime start_year = new DateTime(start_date.Year, 12, 31);
+                        try
+                        {
+                            // Inserisco il blocco su tutte le tabelle da modificare
+                            wet_db.ExecCustomCommand("LOCK TABLES districts WRITE, data_districts WRITE, districts_bands_history WRITE, " +
+                                "districts_energy_profile WRITE, districts_energy_day_statistic WRITE, districts_statistic_profiles WRITE, " +
+                                "districts_events WRITE, districts_day_statistic WRITE, districts_month_statistic WRITE, districts_year_statistic WRITE");
+                            // Elimino i profili di consumo
+                            wet_db.ExecCustomCommand("DELETE FROM data_districts WHERE districts_id_districts = " + id.ToString() + 
+                                " AND `timestamp` >= '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                            // Elimino lo storico delle bande
+                            wet_db.ExecCustomCommand("DELETE FROM districts_bands_history WHERE districts_id_districts = " + id.ToString() +
+                                " AND `timestamp` >= '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                            // Elimino i profili energetici
+                            wet_db.ExecCustomCommand("DELETE FROM districts_energy_profile WHERE districts_id_districts = " + id.ToString() +
+                                " AND `timestamp` >= '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                            // Elimino le statistiche energetiche
+                            wet_db.ExecCustomCommand("DELETE FROM districts_energy_day_statistic WHERE districts_id_districts = " + id.ToString() +
+                                " AND `day` >= '" + start_date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                            // Elimino i profili statistici
+                            wet_db.ExecCustomCommand("DELETE FROM districts_statistic_profiles WHERE districts_id_districts = " + id.ToString() +
+                                " AND `timestamp` >= '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                            // Elimino gli eventi
+                            wet_db.ExecCustomCommand("DELETE FROM districts_events WHERE districts_id_districts = " + id.ToString() +
+                                " AND `day` >= '" + start_date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                            // Elimino le statistiche giornaliere
+                            wet_db.ExecCustomCommand("DELETE FROM districts_day_statistic WHERE districts_id_districts = " + id.ToString() +
+                                " AND `day` >= '" + start_date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                            // Elimino le statistiche mensili
+                            wet_db.ExecCustomQuery("DELETE FROM districts_month_statistic WHERE districts_id_districts = " + id.ToString() +
+                                " AND `month` >= '" + start_month.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                            // Elimino le statistiche annuali
+                            wet_db.ExecCustomQuery("DELETE FROM districts_year_statistic WHERE districts_id_districts = " + id.ToString() +
+                                " AND `year` >= '" + start_year.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                            // Imposto lo stato di successo
+                            ret_value = 1;
+                        }
+                        catch (Exception ex)
+                        {
+                            WetDebug.GestException(ex);
+                        }
+                        finally
+                        {
+                            try
+                            {
+                                // Tolgo il blocco
+                                wet_db.ExecCustomCommand("UNLOCK TABLES");
+                                // Aggiorno il campo di reset
+                                wet_db.ExecCustomCommand("UPDATE districts SET `reset_all_data` = " + (id + 1).ToString() + " WHERE id_districts = " + id.ToString());
+                            }
+                            catch (Exception ex)
+                            {                                
+                                WetDebug.GestException(ex);
+                                // Imposto uno stato di fallimento
+                                ret_value = 0;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex1)
+                {
+                    WetDebug.GestException(ex1);
+                }
+                ret += "<Return>" + ret_value.ToString() + "</Return>";
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.ContentType = "text/plain";
+                return new MemoryStream(Encoding.Default.GetBytes(ret));
+            }
+
+            /// <summary>
+            /// Restituisce la media mensile per ciascun mese dell'anno specificato
+            /// </summary>
+            /// <param name="id_district">ID univoco del distretto</param>
+            /// <param name="year">Anno da analizzare</param>
+            /// <returns>Restituisce un vettore con 12 valori</returns>
+            public Stream GetMonthsAverageOfYear(string id_district, string year)
+            {
+                string ret = "<?xml version =\"1.0\"?>";
+
+                try
+                {
+                    ret += "<Months>";
+                    // Designazione finestar temporale
+                    DateTime start_date = new DateTime(Convert.ToInt32(year), 1, 1);
+                    DateTime stop_date = start_date.AddYears(1);
+                    // Query
+                    DataTable dt = wet_db.ExecCustomQuery("SELECT `month`, `avg_month` FROM districts_month_statistic WHERE `districts_id_districts` = " + id_district +
+                        " AND `month` >= '" + start_date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "' AND `month` < '" + stop_date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + 
+                        "' ORDER BY `month` ASC");
+                    // Compongo la risposta
+                    foreach (DataRow dr in dt.Rows)
+                    {
+                        int month = Convert.ToDateTime(dr["month"]).Month;
+                        double avg = Convert.ToDouble(dr["avg_month"]);
+                        ret += "<Month id=\"" + month.ToString() + "\">" + "<Average>" + avg.ToString() +
+                            "</Average></Month>";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+                finally
+                {
+                    ret += "</Months>";
+                }
 
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
