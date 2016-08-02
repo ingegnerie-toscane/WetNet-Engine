@@ -560,6 +560,11 @@ namespace WetLib
             /// Porta di ascolto
             /// </summary>
             public int port;
+
+            /// <summary>
+            /// Tempo di interpolazione espresso in minuti
+            /// </summary>
+            public int interpolation_time;
         }
 
         #endregion
@@ -735,6 +740,7 @@ namespace WetLib
             WJ_WebService_Config_Struct cfg;
 
             cfg.port = Convert.ToInt32(root.Element("WebServicePort").Value);
+            cfg.interpolation_time = Convert.ToInt32(root.Element("InterpolationTimeMinutes").Value);
 
             return cfg;
         }

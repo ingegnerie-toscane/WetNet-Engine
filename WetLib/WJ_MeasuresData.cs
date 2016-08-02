@@ -261,7 +261,7 @@ namespace WetLib
                         // Istanzio la connessione al database sorgente
                         source_db = new WetDBConn(measure_coord.odbc_connection, measure_coord.username, measure_coord.password, false);
                         // Estraggo il timestamp dell'ultimo valore scritto nel database sorgente
-                        last_source = GetLastSourceSample(source_db, last_dest, measure_coord);
+                        last_source = GetLastSourceSample(source_db, last_dest, measure_coord);                        
                     }
                     else
                     {
@@ -277,6 +277,8 @@ namespace WetLib
                         {
                             // Acquisisco tutti i campioni da scrivere                        
                             samples = source_db.ExecCustomQuery(GetBaseQueryStr(source_db, measure_coord, last_dest, DateTime.Now, WetDBConn.OrderTypes.ASC, MAX_RECORDS_IN_QUERY));
+                            if (measure_coord.timestamp_column == "__lcfts__")
+                                measure_coord.timestamp_column = "ts_col";
                             // Gestione dei contatori volumetrici
                             if (mtype == MeasureTypes.COUNTER)
                             {
@@ -506,7 +508,19 @@ namespace WetLib
                     break;
 
                 case WetDBConn.ProviderType.GENERIC_MYSQL:
-                    query = "SELECT `" + measure_coord.timestamp_column + "`, `" + measure_coord.value_column + "` FROM " + measure_coord.table_name +
+                    string timestamp_str = "`" + measure_coord.timestamp_column + "`";
+                    string ts_query = timestamp_str;
+                    string order_col = timestamp_str;
+                    if (measure_coord.timestamp_column == "__lcfts__")
+                    {
+                        // Per acquisire i dati diretti dagli lcf
+                        timestamp_str = "TIMESTAMP(`Data`, `Ora`) AS ts_col";
+                        ts_query = "TIMESTAMP(`Data`, `Ora`)";
+                        order_col = "`ts_col`";
+                    }
+                    else
+                        measure_coord.timestamp_column = "`" + measure_coord.timestamp_column + "`";
+                    query = "SELECT " + timestamp_str + ", `" + measure_coord.value_column + "` FROM " + measure_coord.table_name +
                         " WHERE ";
                     if (measure_coord.relational_id_column != string.Empty)
                     {
@@ -531,9 +545,9 @@ namespace WetLib
                         }
                         query += " AND ";
                     }
-                    query += "(`" + measure_coord.timestamp_column + "` > '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
-                                "' AND `" + measure_coord.timestamp_column + "` <= '" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "')";
-                    query += " ORDER BY `" + measure_coord.timestamp_column + "` " + (order == WetDBConn.OrderTypes.ASC ? "ASC" : "DESC");
+                    query += "(" + ts_query + " > '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                                "' AND " + ts_query + " <= '" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "')";
+                    query += " ORDER BY " + order_col + " " + (order == WetDBConn.OrderTypes.ASC ? "ASC" : "DESC");
                     if (num_records > 0)
                         query += " LIMIT " + num_records.ToString();
                     break;

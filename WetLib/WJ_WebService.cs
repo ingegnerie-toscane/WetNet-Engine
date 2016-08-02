@@ -59,6 +59,14 @@ namespace WetLib
             [WebGet]
             Stream GetMonthsAverageOfYear(string id_district, string year);
 
+            [OperationContract]
+            [WebGet]
+            Stream GetDayTrend(string id_district, string date);
+
+            [OperationContract]
+            [WebGet]
+            Stream GetDayTrendCSV(string id_district, string date);
+
             #endregion
         }
 
@@ -722,6 +730,93 @@ namespace WetLib
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
+                return new MemoryStream(Encoding.Default.GetBytes(ret));
+            }
+
+            /// <summary>
+            /// Restituisce un trend previsionale per un dato giorno
+            /// </summary>
+            /// <param name="id_district">ID univoco del distretto</param>
+            /// <param name="date">Data da analizzare</param>
+            /// <returns>Vettore con i campioni giornalieri</returns>
+            public Stream GetDayTrend(string id_district, string date)
+            {                
+                string ret = "<?xml version =\"1.0\"?>";
+
+                ret += "<Samples>";
+                try
+                {
+                    
+                    // Imposto i parametri                    
+                    int id = Convert.ToInt32(id_district);
+                    DateTime dt = Convert.ToDateTime(date);
+                    int interpolation_time_minutes = WetConfig.GetInterpolationTimeMinutes();
+                    int samples_in_day = (int)(24 * 60 / WetConfig.GetInterpolationTimeMinutes());
+                    // Compongo il vettore
+                    DayTrendSample[] profile = WetUtility.GetDayTrend(id, dt, samples_in_day, 8);
+                    // Compongo la risposta
+                    for (int ii = 0; ii < profile.Length; ii++)
+                    {
+                        ret += "<Sample id=\"" + profile[ii].timestamp.Ticks.ToString() + "\">";
+                        ret += "<TimeStamp>" + profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</TimeStamp>" +
+                            "<HiValue>" + profile[ii].hi_value.ToString().Replace(',', '.') + "</HiValue>" +
+                            "<AvgValue>" + profile[ii].avg_value.ToString().Replace(',', '.') + "</AvgValue>" +
+                            "<LoValue>" + profile[ii].lo_value.ToString().Replace(',', '.') + "</LoValue>";
+                        ret += "</Sample>";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+                ret += "</Samples>";
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.ContentType = "text/plain";
+                return new MemoryStream(Encoding.Default.GetBytes(ret));
+            }
+
+            /// <summary>
+            /// Restituisce un trend previsionale per un dato giorno in formato CSV
+            /// </summary>
+            /// <param name="id_district">ID univoco del distretto</param>
+            /// <param name="date">Data da analizzare</param>
+            /// <returns>Vettore con i campioni giornalieri</returns>
+            public Stream GetDayTrendCSV(string id_district, string date)
+            {
+                int id = 0;
+                DateTime dt = new DateTime();
+
+                string ret = "TIMESTAMP;LO_VALUE;AVERAGE;HI_VALUE;" + Environment.NewLine;
+                try
+                {
+
+                    // Imposto i parametri                    
+                    id = Convert.ToInt32(id_district);
+                    dt = Convert.ToDateTime(date);
+                    int interpolation_time_minutes = WetConfig.GetInterpolationTimeMinutes();
+                    int samples_in_day = (int)(24 * 60 / WetConfig.GetInterpolationTimeMinutes());
+                    // Compongo il vettore
+                    DayTrendSample[] profile = WetUtility.GetDayTrend(id, dt, samples_in_day, 8);
+                    // Compongo la risposta
+                    for (int ii = 0; ii < profile.Length; ii++)
+                    {
+                        ret += profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + ";" +
+                            profile[ii].lo_value.ToString().Replace(',', '.') + ";" +
+                            profile[ii].avg_value.ToString().Replace(',', '.') + ";" +
+                            profile[ii].hi_value.ToString().Replace(',', '.') + ";" + Environment.NewLine;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.Headers["Content-Disposition"] = "attachment; filename=" + id.ToString() + "_" + dt.ToString("yyyyMMdd") + "_DayTrend.csv";
+                context.ContentType = "application/octet-stream";
                 return new MemoryStream(Encoding.Default.GetBytes(ret));
             }
 

@@ -56,11 +56,11 @@ namespace WetLib
             double avg = GetMean(values);
 
             // Calcolo le varianze
-            for (int ii = 0; ii < values.Length; ii++)
+            for (long ii = 0; ii < values.LongLength; ii++)
                 variance[ii] = Math.Pow(values[ii] - avg, 2.0d);
 
             // Calcolo la media delle varianze (o varianza)
-            for (int ii = 0; ii < variance.Length; ii++)
+            for (long ii = 0; ii < variance.LongLength; ii++)
                 avg_variance += variance[ii];
             avg_variance /= variance.Length - 1;
 

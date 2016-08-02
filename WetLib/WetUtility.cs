@@ -35,6 +35,36 @@ using System.Reflection;
 
 namespace WetLib
 {
+    #region Strutture
+
+    /// <summary>
+    /// Struttura di un campione del trend
+    /// </summary>
+    struct DayTrendSample
+    {
+        /// <summary>
+        /// Timestamp del campione
+        /// </summary>
+        public DateTime timestamp;
+
+        /// <summary>
+        /// Valore massimo
+        /// </summary>
+        public double hi_value;
+
+        /// <summary>
+        /// Valore medio
+        /// </summary>
+        public double avg_value;
+
+        /// <summary>
+        /// Valore minimo
+        /// </summary>
+        public double lo_value;
+    }
+
+    #endregion
+
     /// <summary>
     /// Classe statica che incorpora una libreria di funzioni utili
     /// </summary>
@@ -183,6 +213,100 @@ namespace WetLib
             if (!EventLog.SourceExists(log_name))
                 EventLog.CreateEventSource(log_name, log_name);            
             EventLog.WriteEntry(log_name, message, type);
+        }
+
+        /// <summary>
+        /// Restituisce il profilo di un giorno specifico di un distretto
+        /// </summary>
+        /// <param name="id_district">ID univoco di un distretto</param>
+        /// <param name="day">Giorno da estrarre</param>
+        /// <param name="max_samples">Numero massimo di campioni restituiti (0 default = illimitati)</param>
+        /// <returns>Dizionario con i valori</returns>
+        public static Dictionary<DateTime, double> GetDistrictProfileOfDay(int id_district, DateTime day, int max_samples = -1)
+        {
+            WetConfig wcfg = null;
+            WetDBConn wet_db = null;
+            Dictionary<DateTime, double> profile = new Dictionary<DateTime, double>();
+
+            try
+            {
+                // Istanzio la connessione al database wetnet
+                wcfg = new WetConfig();
+                wet_db = new WetDBConn(wcfg.GetWetDBDSN(), null, null, true);
+                // Eseguo la query
+                DataTable dt = wet_db.ExecCustomQuery("SELECT `timestamp`, `value` FROM data_districts WHERE `timestamp` >= '" + day.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                    "' AND `timestamp` < '" + day.AddDays(1.0).Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + 
+                    "' AND `districts_id_districts` = " + id_district.ToString() + " ORDER BY `timestamp` ASC");
+                // Popolo il dizionario
+                foreach (DataRow dr in dt.Rows)
+                {
+                    DateTime ts = Convert.ToDateTime(dr["timestamp"]);
+                    double value = Convert.ToDouble(dr["value"]);
+                    if ((max_samples <= 0) || ((max_samples > 0) && (profile.Count < max_samples)))
+                        profile.Add(ts, value);
+                }
+            }
+            catch (Exception ex)
+            {
+                WetDebug.GestException(ex);
+            }
+
+            return profile;
+        }
+
+        /// <summary>
+        /// Restituisce il profilo previsionale di un giorno specificato
+        /// </summary>
+        /// <param name="id_district">ID univoco di un distretto</param>
+        /// <param name="day">Giorno previsionale</param>
+        /// <param name="retro_weeks">Numero settimane precedenti su cui effettuare il calcolo</param>
+        /// <returns>Dizionario con i valori</returns>
+        public static DayTrendSample[] GetDayTrend(int id_district, DateTime day, int samples_in_day, int retro_weeks)
+        {
+            DayTrendSample[] profile = new DayTrendSample[samples_in_day];
+
+            try
+            {
+                // Compongo i giorni da analizzare
+                DateTime[] days = new DateTime[retro_weeks];
+                for (int ii = 0; ii < retro_weeks; ii++)
+                    days[ii] = day.Subtract(new TimeSpan((ii + 1) * 7, 0, 0, 0));
+                // Compongo vettore bidimensionale
+                double[,] vector2d = new double[retro_weeks, samples_in_day];
+                for (int ii = 0; ii < retro_weeks; ii++)
+                {
+                    Dictionary<DateTime, double> vect = GetDistrictProfileOfDay(id_district, days[ii], samples_in_day);
+                    for (int jj = 0; jj < vect.Count; jj++)
+                        vector2d[ii, jj] = vect.Values.ElementAt(jj);
+                }
+                // Compongo i vettori di media e deviazione standard
+                double[] avg_vect = new double[samples_in_day];
+                double[] stddev_vect = new double[samples_in_day];
+                for (int ii = 0; ii < samples_in_day; ii++)
+                {
+                    // Compongo il vettore verticale dei campioni giornalieri
+                    double[] samples = new double[retro_weeks];
+                    for (int jj = 0; jj < retro_weeks; jj++)
+                        samples[jj] = vector2d[jj, ii];
+                    // Calcolo media e deviazione standard
+                    avg_vect[ii] = WetStatistics.GetMean(samples);
+                    stddev_vect[ii] = WetStatistics.StandardDeviation(samples);
+                }
+                // Compongo il vettore finale
+                for (int ii = 0; ii < samples_in_day; ii++)
+                {
+                    profile[ii].timestamp = day.Date.AddMinutes(ii * 24 * 60 / samples_in_day);
+                    profile[ii].hi_value = avg_vect[ii] + (2 * stddev_vect[ii]);
+                    profile[ii].avg_value = avg_vect[ii];
+                    profile[ii].lo_value = avg_vect[ii] - (2 * stddev_vect[ii]);
+                }
+            }
+            catch (Exception ex)
+            {
+                WetDebug.GestException(ex);
+            }
+
+            return profile;
         }
 
         #endregion
