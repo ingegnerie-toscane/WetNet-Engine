@@ -98,6 +98,8 @@ namespace WetLib
                 {
                     // Acquisisco l'ID univoco del distretto
                     int id_district = Convert.ToInt32(district["id_districts"]);
+                    // Imposto il flag di criticità del distretto
+                    bool critical = false;
                     // Acquisisco la data di creazione del distretto
                     DateTime timestamp = Convert.ToDateTime(district["update_timestamp"]);
                     // Controllo la necessità di ricreare i dati del distretto
@@ -130,6 +132,19 @@ namespace WetLib
                     // Acquisisco tutte le misure configurate per il distretto, eccetto le pressioni
                     DataTable measures = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND ((measures.type = 0) OR (measures.type = 2))");
                     measures.PrimaryKey = new DataColumn[] { measures.Columns["measures_id_measures"] };
+                    // Controllo se il distretto è critico
+                    DataTable measures_crit = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `districts_id_districts`, `critical` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString());
+                    foreach (DataRow measure in measures_crit.Rows)
+                    {
+                        int id_measure = Convert.ToInt32(measure["measures_id_measures"]);
+                        bool m_critical = Convert.ToBoolean(measure["critical"]);
+                        if (m_critical)
+                            critical = true;                        
+                        // Passo il controllo al S.O. per l'attesa
+                        if (cancellation_token_source.IsCancellationRequested)
+                            return;
+                        Sleep();
+                    }
                     // Acquisisco il timestamp dell'ultimo giorno campionato
                     DataTable tmp = wet_db.ExecCustomQuery("SELECT `timestamp` FROM data_districts WHERE `districts_id_districts` = " + id_district + " ORDER BY `timestamp` DESC LIMIT 1");
                     DateTime last;
@@ -138,10 +153,20 @@ namespace WetLib
                     else
                         last = DateTime.MinValue;
                     DateTime start;
-                    if (last > timestamp)
-                        start = last;
+                    if (!critical)
+                    {
+                        if (last > timestamp)
+                            start = last;
+                        else
+                            start = timestamp;
+                    }
                     else
-                        start = timestamp;
+                    {
+                        if (last > timestamp)
+                            start = DateTime.Now.Subtract(new TimeSpan(1, 0, 0, 0));
+                        else
+                            start = timestamp;
+                    }
                     // Cerco l'ultimo compione comune a tutte le misure
                     DateTime last_of_measures = start;
                     List<DateTime> lasts = new List<DateTime>();

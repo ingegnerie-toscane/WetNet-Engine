@@ -179,6 +179,7 @@ namespace WetLib
                     int id_measure = Convert.ToInt32(measure["id_measures"]);
                     int id_odbc_dsn = Convert.ToInt32(measure["connections_id_odbcdsn"]);
                     MeasureTypes mtype = (MeasureTypes)Convert.ToInt32(measure["type"]);
+                    bool critical = Convert.ToBoolean(measure["critical"]);
                     bool reliable = true;
                     if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
                         reliable = Convert.ToBoolean(measure["reliable"]);
@@ -253,6 +254,9 @@ namespace WetLib
                     DateTime last_dest = GetLastDestSample(id_measure);
                     if (last_dest == DateTime.MinValue)
                         last_dest = start_date;
+                    // Se la misura è critica prendo sempre un giorno arretrato
+                    if (critical)
+                        last_dest = DateTime.Now.Subtract(new TimeSpan(1, 0, 0, 0));
                     // Inizio l'acquisiszione dei dati
                     DateTime last_source = DateTime.MinValue;
                     WetDBConn source_db = null;

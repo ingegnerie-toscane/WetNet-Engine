@@ -423,6 +423,20 @@ namespace WetLib
                         double alpha = Convert.ToDouble(district["alpha_emitter_exponent"]);
                         double household_night_use = Convert.ToDouble(district["household_night_use"]);
                         double not_household_night_use = Convert.ToDouble(district["not_household_night_use"]);
+                        // Controllo se il distretto è critico
+                        bool critical = false;
+                        DataTable measures_crit = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `districts_id_districts`, `critical` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString());
+                        foreach (DataRow measure in measures_crit.Rows)
+                        {
+                            int id_measure = Convert.ToInt32(measure["measures_id_measures"]);
+                            bool m_critical = Convert.ToBoolean(measure["critical"]);
+                            if (m_critical)
+                                critical = true;
+                            // Passo il controllo al S.O. per l'attesa
+                            if (cancellation_token_source.IsCancellationRequested)
+                                return;
+                            Sleep();
+                        }
                         // Controllo il campo di reset
                         int reset_all_data = Convert.ToInt32(district["reset_all_data"]);
                         if ((reset_all_data >= id_district) && (reset_all_data < (id_district + 2)))
@@ -431,7 +445,11 @@ namespace WetLib
                         DateTime first_day = DateTime.MinValue;
                         DataTable first_day_table = wet_db.ExecCustomQuery("SELECT * FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `day` DESC LIMIT 1");
                         if (first_day_table.Rows.Count == 1)
+                        {
                             first_day = Convert.ToDateTime(first_day_table.Rows[0]["day"]);
+                            if (critical)
+                                first_day = first_day.Subtract(new TimeSpan(1, 0, 0, 0));
+                        }
                         // Calcolo statistiche mensili e annuali
                         if (WetDBConn.wetdb_model_version != WetDBConn.WetDBModelVersion.V1_0)
                         {
