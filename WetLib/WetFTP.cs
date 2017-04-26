@@ -274,6 +274,46 @@ namespace WetLib
         {
             List<string> nodes = new List<string>();
 
+            string basenode = "/";
+            if (base_node.Length > 0)
+            {
+                if (base_node.Last() == '/')
+                    basenode = base_node;
+                else
+                    basenode = base_node + '/';
+            }
+            nodes.Add(basenode);
+
+            int depth = basenode.Count(x => x == '/');
+            if (depth < MAX_FOLDER_DEEP)
+            {
+                string[] sub_nodes = ListSubFolders(basenode);
+                for (int ii = 0; ii < sub_nodes.Length; ii++)
+                {
+                    if ((sub_nodes[ii] != ".") && (sub_nodes[ii] != ".."))
+                    {
+                        sub_nodes[ii] = base_node + "/" + sub_nodes[ii];
+                        nodes.Add(sub_nodes[ii]);
+                        nodes.AddRange(GetFolderTree(sub_nodes[ii]));
+                    }
+                }
+            }
+
+            return nodes.ToArray();
+
+            /*** OLD 29/03/2017 --- Modifica fatta x Fiora ***
+            List<string> nodes = new List<string>();
+
+            string basenode = "/";
+            if (base_node.Length > 0)
+            {
+                if (basenode.Last() == '/')
+                    basenode = base_node;
+                else
+                    basenode = base_node + '/';
+            }
+            nodes.Add(basenode);
+
             int depth = base_node.Count(x => x == '/');
             if (depth < MAX_FOLDER_DEEP)
             {
@@ -290,6 +330,7 @@ namespace WetLib
             }
 
             return nodes.ToArray();
+            *** END OLD ***/
         }
 
         /// <summary>

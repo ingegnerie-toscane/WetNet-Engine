@@ -33,6 +33,7 @@ using System.Data;
 using System.Data.Odbc;
 using Microsoft.Win32;
 using System.Threading;
+using System.Globalization;
 
 namespace WetLib
 {
@@ -349,14 +350,14 @@ namespace WetLib
         public DataTable ExecCustomQuery(string query)
         {
             DataTable dt = new DataTable();
-
+            
             using (OdbcConnection conn = new OdbcConnection(connection_string))
             {
                 try
                 {
                     conn.Open();
                     using (OdbcCommand cmd = new OdbcCommand(query, conn))
-                    {
+                    {                        
                         cmd.CommandTimeout = 360;   // 6 minuti
                         using (OdbcDataAdapter da = new OdbcDataAdapter(cmd))
                         {
@@ -370,7 +371,8 @@ namespace WetLib
                 }
                 finally
                 {
-                    conn.Close();
+                    if (conn != null)
+                        conn.Close();
                 }
             }
 
@@ -388,12 +390,23 @@ namespace WetLib
 
             using (OdbcConnection conn = new OdbcConnection(connection_string))
             {
-                conn.Open();
-                using (OdbcCommand cmd = new OdbcCommand(command, conn))
+                try
                 {
-                    ret = cmd.ExecuteNonQuery();
+                    conn.Open();
+                    using (OdbcCommand cmd = new OdbcCommand(command, conn))
+                    {
+                        ret = cmd.ExecuteNonQuery();
+                    }
                 }
-                conn.Close();
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+                finally
+                {
+                    if (conn != null)
+                        conn.Close();
+                }
             }
 
             return ret;

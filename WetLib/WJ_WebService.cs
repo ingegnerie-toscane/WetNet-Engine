@@ -67,6 +67,18 @@ namespace WetLib
             [WebGet]
             Stream GetDayTrendCSV(string id_district, string date);
 
+            [OperationContract]
+            [WebGet]
+            Stream GetDayTrendEx(string id_district, string date);
+
+            [OperationContract]
+            [WebGet]
+            Stream GetDayTrendCSVEx(string id_district, string date);
+
+            [OperationContract]
+            [WebGet]
+            Stream GetDayTrends();
+
             #endregion
         }
 
@@ -180,6 +192,94 @@ namespace WetLib
                     }
                     else
                         ret += "<Error>No entities founds!</Error>";                    
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.ContentType = "text/plain";
+                return new MemoryStream(Encoding.Default.GetBytes(ret));
+            }
+
+            /// <summary>
+            /// Restituisce un array di valori fra due date con quality
+            /// </summary>
+            /// <param name="start_date">Data di inzio</param>
+            /// <param name="stop_date">Data di fine</param>
+            /// <returns>Stringa con le serie timestamp/valore</returns>
+            /// <remarks>
+            /// Questa funzione restituisce tutti i punti di misura in campo che abbiano un
+            /// IDGIS associato.
+            /// </remarks>
+            public Stream GetGISAllFieldPointsEx(string start_date, string stop_date)
+            {
+                string ret = "<?xml version =\"1.0\"?>";
+
+                try
+                {
+                    DataTable measures;
+
+                    // Acquisisco tutte le misure presenti                
+                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                        measures = wet_db.ExecCustomQuery("SELECT * FROM measures WHERE sap_code IS NOT NULL AND sap_code <> ''");
+                    else
+                        measures = wet_db.ExecCustomQuery("SELECT * FROM measures WHERE gis_code IS NOT NULL AND gis_code <> ''");
+
+                    if (measures.Rows.Count > 0)
+                    {
+                        ret += "<Records>";
+                        // Ciclo per tutte le entità
+                        foreach (DataRow measure in measures.Rows)
+                        {
+                            DataTable dt;
+                            string id_gis;
+                            DateTime start = DateTime.MinValue;
+                            DateTime stop = DateTime.Now;
+
+                            int id_measure = Convert.ToInt32(measure["id_measures"]);
+                            MeterTypes mtype = (MeterTypes)Convert.ToInt32(measure["strumentation_type"]);
+                            if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                                id_gis = Convert.ToString(measure["sap_code"]);
+                            else
+                                id_gis = Convert.ToString(measure["gis_code"]);
+
+                            try
+                            {
+                                // Converto i valori in data/ora
+                                start = Convert.ToDateTime(start_date);
+                                stop = Convert.ToDateTime(stop_date);
+                                // Leggo i dati
+                                dt = wet_db.ExecCustomQuery("SELECT `timestamp`, `value` FROM data_measures WHERE measures_id_measures = " + id_measure +
+                                    " AND `timestamp` >= '" + start.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
+                                    " AND `timestamp` <= '" + stop.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
+                                    " ORDER BY `timestamp` ASC");
+                                if (dt.Rows.Count > 0)
+                                {
+                                    // Ciclo per tutti i dati letti
+                                    foreach (DataRow dr in dt.Rows)
+                                    {
+                                        DateTime ts = Convert.ToDateTime(dr["timestamp"]);
+                                        double value = Convert.ToDouble(dr["value"]);
+                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks + "\"><InputType>" +
+                                            ((int)WetUtility.GetInputTypeFromMeterType(mtype)).ToString() + "</InputType><ObjectType>" + ((int)mtype).ToString() +
+                                            "</ObjectType><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                                            "</Timestamp><Value>" + value.ToString().Replace(',', '.') +
+                                            "</Value></Record>";
+                                    }
+                                }
+                            }
+                            catch (Exception ex0)
+                            {
+                                WetDebug.GestException(ex0);
+                            }
+                        }
+                        ret += "</Records>";
+                    }
+                    else
+                        ret += "<Error>No entities founds!</Error>";
                 }
                 catch (Exception ex)
                 {
@@ -817,6 +917,176 @@ namespace WetLib
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.Headers["Content-Disposition"] = "attachment; filename=" + id.ToString() + "_" + dt.ToString("yyyyMMdd") + "_DayTrend.csv";
                 context.ContentType = "application/octet-stream";
+                return new MemoryStream(Encoding.Default.GetBytes(ret));
+            }
+
+            /// <summary>
+            /// Restituisce un trend previsionale per un dato giorno
+            /// </summary>
+            /// <param name="id_district">ID univoco del distretto</param>
+            /// <param name="date">Data da analizzare</param>
+            /// <returns>Vettore con i campioni giornalieri</returns>
+            public Stream GetDayTrendEx(string id_district, string date)
+            {
+                string ret = "<?xml version =\"1.0\"?>";
+
+                ret += "<Samples>";
+                try
+                {
+
+                    // Imposto i parametri                    
+                    int id = Convert.ToInt32(id_district);
+                    DateTime dt = Convert.ToDateTime(date);
+                    int interpolation_time_minutes = WetConfig.GetInterpolationTimeMinutes();
+                    int samples_in_day = (int)(24 * 60 / WetConfig.GetInterpolationTimeMinutes());
+                    // Compongo il vettore
+                    DayTrendSample[] profile = WetUtility.GetDayTrendEx(id, dt, samples_in_day, 8);
+                    // Compongo la risposta
+                    for (int ii = 0; ii < profile.Length; ii++)
+                    {
+                        ret += "<Sample id=\"" + profile[ii].timestamp.Ticks.ToString() + "\">";
+                        ret += "<TimeStamp>" + profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</TimeStamp>" +
+                            "<HiValue>" + profile[ii].hi_value.ToString().Replace(',', '.') + "</HiValue>" +
+                            "<AvgValue>" + profile[ii].avg_value.ToString().Replace(',', '.') + "</AvgValue>" +
+                            "<LoValue>" + profile[ii].lo_value.ToString().Replace(',', '.') + "</LoValue>";
+                        ret += "</Sample>";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+                ret += "</Samples>";
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.ContentType = "text/plain";
+                return new MemoryStream(Encoding.Default.GetBytes(ret));
+            }
+
+            /// <summary>
+            /// Restituisce un trend previsionale per un dato giorno in formato CSV
+            /// </summary>
+            /// <param name="id_district">ID univoco del distretto</param>
+            /// <param name="date">Data da analizzare</param>
+            /// <returns>Vettore con i campioni giornalieri</returns>
+            public Stream GetDayTrendCSVEx(string id_district, string date)
+            {
+                int id = 0;
+                DateTime dt = new DateTime();
+
+                string ret = "TIMESTAMP;LO_VALUE;AVERAGE;HI_VALUE;" + Environment.NewLine;
+                try
+                {
+
+                    // Imposto i parametri                    
+                    id = Convert.ToInt32(id_district);
+                    dt = Convert.ToDateTime(date);
+                    int interpolation_time_minutes = WetConfig.GetInterpolationTimeMinutes();
+                    int samples_in_day = (int)(24 * 60 / WetConfig.GetInterpolationTimeMinutes());
+                    // Compongo il vettore
+                    DayTrendSample[] profile = WetUtility.GetDayTrendEx(id, dt, samples_in_day, 8);
+                    // Compongo la risposta
+                    for (int ii = 0; ii < profile.Length; ii++)
+                    {
+                        ret += profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + ";" +
+                            profile[ii].lo_value.ToString().Replace(',', '.') + ";" +
+                            profile[ii].avg_value.ToString().Replace(',', '.') + ";" +
+                            profile[ii].hi_value.ToString().Replace(',', '.') + ";" + Environment.NewLine;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.Headers["Content-Disposition"] = "attachment; filename=" + id.ToString() + "_" + dt.ToString("yyyyMMdd") + "_DayTrend.csv";
+                context.ContentType = "application/octet-stream";
+                return new MemoryStream(Encoding.Default.GetBytes(ret));
+            }
+
+            /// <summary>
+            /// Restituisce le curve caratteristiche di tutti i distretti con ID GIS associato
+            /// </summary>
+            /// <returns>Vettori</returns>
+            public Stream GetDayTrends()
+            {
+                string ret = "<?xml version =\"1.0\"?>";
+
+                try
+                {
+                    DataTable districts;
+
+                    // Acquisisco tutte le misure presenti                
+                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                        districts = wet_db.ExecCustomQuery("SELECT * FROM districts WHERE sap_code IS NOT NULL AND sap_code <> ''");
+                    else
+                        districts = wet_db.ExecCustomQuery("SELECT * FROM districts WHERE gis_code IS NOT NULL AND gis_code <> ''");
+
+                    if (districts.Rows.Count > 0)
+                    {
+                        ret += "<Records>";
+                        // Ciclo per tutte le entità
+                        foreach (DataRow district in districts.Rows)
+                        {
+                            string id_gis;
+
+                            int id_district = Convert.ToInt32(district["id_districts"]);
+                            if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            {
+                                id_gis = Convert.ToString(district["sap_code"]);
+                                if ((id_gis[0] != '$') && (id_gis.Last() != '$'))
+                                    continue;
+                                else
+                                    id_gis = id_gis.Remove(id_gis.Length - 1).Remove(0, 1);
+                            }
+                            else
+                                id_gis = Convert.ToString(district["gis_code"]);
+
+                            try
+                            {
+                                int interpolation_time_minutes = WetConfig.GetInterpolationTimeMinutes();
+                                int samples_in_day = (int)(24 * 60 / WetConfig.GetInterpolationTimeMinutes());
+                                DateTime day = DateTime.Now.Date;
+                                ret += "<Record id_gis=\"" + id_gis.ToString() + "\"><Days>";
+                                for (int ii = 0; ii < 7; ii++)
+                                {
+                                    day = day.AddDays(1.0d);
+                                    ret += "<Day day=\"" + day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "\" day_of_week=\"" + day.DayOfWeek.ToString() + "\">";
+                                    DayTrendSample[] dts = WetUtility.GetDayTrendEx(id_district, day, samples_in_day, 8);
+                                    ret += "<Profile>";
+                                    foreach (DayTrendSample dt in dts)
+                                    {
+                                        ret += "<Timestamp>" + dt.timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</Timestamp>";
+                                        ret += "<LowValue>" + dt.lo_value.ToString("F2") + "</LowValue>";
+                                        ret += "<AvgValue>" + dt.avg_value.ToString("F2") + "</AvgValue>";
+                                        ret += "<HighValue>" + dt.hi_value.ToString("F2") + "</HighValue>";
+                                    }
+                                    ret += "</Profile>";
+                                    ret += "</Day>";
+                                }
+                                ret += "</Days></Record>";
+                            }
+                            catch (Exception ex0)
+                            {
+                                WetDebug.GestException(ex0);
+                            }
+                        }
+                        ret += "</Records>";
+                    }
+                    else
+                        ret += "<Error>No entities founds!</Error>";
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.ContentType = "text/plain";
                 return new MemoryStream(Encoding.Default.GetBytes(ret));
             }
 

@@ -255,6 +255,48 @@ namespace WetLib
         }
 
         /// <summary>
+        /// Restituisce l'evento per un giorno selezionato
+        /// </summary>
+        /// <param name="id_district">ID del distretto</param>
+        /// <param name="day">Giorno da estrarre</param>
+        /// <returns>Evento</returns>
+        public static WJ_Events.Event GetEventOfDay(int id_district, DateTime day)
+        {
+            WetConfig wcfg = null;
+            WetDBConn wet_db = null;
+            WJ_Events.Event ev = new WJ_Events.Event();
+
+            ev.day = DateTime.MinValue;
+            try
+            {
+                // Istanzio la connessione al database wetnet
+                wcfg = new WetConfig();
+                wet_db = new WetDBConn(wcfg.GetWetDBDSN(), null, null, true);
+                // Eseguo la query
+                DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM districts_events WHERE districts_id_districts = " + id_district.ToString() +
+                    " AND `day` = '" + day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'");
+                if (dt.Rows.Count == 1)
+                {
+                    ev.day = Convert.ToDateTime(dt.Rows[0]["day"]);
+                    ev.type = (WJ_Events.EventTypes)Convert.ToInt32(dt.Rows[0]["type"]);
+                    ev.measure_type = (DistrictStatisticMeasureTypes)Convert.ToInt32(dt.Rows[0]["measure_type"]);
+                    ev.duration = Convert.ToInt32(dt.Rows[0]["duration"]);
+                    ev.value = Convert.ToDouble(dt.Rows[0]["value"]);
+                    ev.delta = Convert.ToDouble(dt.Rows[0]["delta_value"]);
+                    ev.ranking = Convert.ToDouble(dt.Rows[0]["ranking"]);
+                    ev.description = Convert.ToString(dt.Rows[0]["description"]);
+                    ev.id_district = Convert.ToInt32(dt.Rows[0]["districts_id_districts"]);
+                }
+            }
+            catch (Exception ex)
+            {
+                WetDebug.GestException(ex);
+            }
+
+            return ev;
+        }
+
+        /// <summary>
         /// Restituisce il profilo previsionale di un giorno specificato
         /// </summary>
         /// <param name="id_district">ID univoco di un distretto</param>
@@ -271,6 +313,95 @@ namespace WetLib
                 DateTime[] days = new DateTime[retro_weeks];
                 for (int ii = 0; ii < retro_weeks; ii++)
                     days[ii] = day.Subtract(new TimeSpan((ii + 1) * 7, 0, 0, 0));
+                // Compongo vettore bidimensionale
+                double[,] vector2d = new double[retro_weeks, samples_in_day];
+                for (int ii = 0; ii < retro_weeks; ii++)
+                {
+                    Dictionary<DateTime, double> vect = GetDistrictProfileOfDay(id_district, days[ii], samples_in_day);
+                    for (int jj = 0; jj < vect.Count; jj++)
+                        vector2d[ii, jj] = vect.Values.ElementAt(jj);
+                }
+                // Compongo i vettori di media e deviazione standard
+                double[] avg_vect = new double[samples_in_day];
+                double[] stddev_vect = new double[samples_in_day];
+                for (int ii = 0; ii < samples_in_day; ii++)
+                {
+                    // Compongo il vettore verticale dei campioni giornalieri
+                    double[] samples = new double[retro_weeks];
+                    for (int jj = 0; jj < retro_weeks; jj++)
+                        samples[jj] = vector2d[jj, ii];
+                    // Calcolo media e deviazione standard
+                    avg_vect[ii] = WetStatistics.GetMean(samples);
+                    stddev_vect[ii] = WetStatistics.StandardDeviation(samples);
+                }
+                // Compongo il vettore finale
+                for (int ii = 0; ii < samples_in_day; ii++)
+                {
+                    profile[ii].timestamp = day.Date.AddMinutes(ii * 24 * 60 / samples_in_day);
+                    profile[ii].hi_value = avg_vect[ii] + (2 * stddev_vect[ii]);
+                    profile[ii].avg_value = avg_vect[ii];
+                    profile[ii].lo_value = avg_vect[ii] - (2 * stddev_vect[ii]);
+                }
+            }
+            catch (Exception ex)
+            {
+                WetDebug.GestException(ex);
+            }
+
+            return profile;
+        }
+
+        /// <summary>
+        /// Restituisce il profilo previsionale di un giorno specificato con correlazione avarie
+        /// </summary>
+        /// <param name="id_district">ID univoco di un distretto</param>
+        /// <param name="day">Giorno previsionale</param>
+        /// <param name="retro_weeks">Numero settimane precedenti su cui effettuare il calcolo</param>
+        /// <returns>Dizionario con i valori</returns>
+        public static DayTrendSample[] GetDayTrendEx(int id_district, DateTime day, int samples_in_day, int retro_weeks)
+        {
+            DayTrendSample[] profile = new DayTrendSample[samples_in_day];
+            WetConfig wcfg = null;
+            WetDBConn wet_db = null;
+            bool extended_mode = false;
+
+            try
+            {
+                // Istanzio la connessione al database wetnet
+                wcfg = new WetConfig();
+                wet_db = new WetDBConn(wcfg.GetWetDBDSN(), null, null, true);
+                // Controllo se sul distretto sono attivati gli eventi
+                DataTable district = wet_db.ExecCustomQuery("SELECT `ev_enable` FROM districts WHERE id_districts = " + id_district.ToString());
+                if (district.Rows.Count == 1)
+                    extended_mode = Convert.ToBoolean(district.Rows[0]["ev_enable"]);
+                // Compongo i giorni da analizzare
+                DateTime[] days = new DateTime[retro_weeks];
+                if (extended_mode)
+                {
+                    int rw = retro_weeks;
+                    int kk = 0, ww = 0;
+                    do
+                    {
+                        // Acquisisco il giorno
+                        days[kk] = day.Subtract(new TimeSpan((ww + 1) * 7, 0, 0, 0));
+                        // Controllo l'evento del giorno
+                        WJ_Events.Event ev = GetEventOfDay(id_district, days[kk]);
+                        if (ev.day != DateTime.MinValue)
+                        {
+                            if (ev.type != WJ_Events.EventTypes.OUT_OF_CONTROL)
+                            {
+                                rw--;
+                                kk++;
+                            }
+                        }
+                        ww++;   // Contatore totale dei cicli
+                    } while ((rw > 0) && (ww <= (retro_weeks * 12)));    // Massimo limite 12 volte il numero settimane
+                }
+                else
+                {
+                    for (int ii = 0; ii < retro_weeks; ii++)
+                        days[ii] = day.Subtract(new TimeSpan((ii + 1) * 7, 0, 0, 0));
+                }
                 // Compongo vettore bidimensionale
                 double[,] vector2d = new double[retro_weeks, samples_in_day];
                 for (int ii = 0; ii < retro_weeks; ii++)

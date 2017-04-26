@@ -248,6 +248,7 @@ namespace WetLib
                             measure_coord.relational_id_column = "measures_id_measures";
                             measure_coord.relational_id_value = id_measure.ToString();
                             measure_coord.relational_id_type = WetDBConn.PrimaryKeyColumnTypes.INT;
+                            mst = MeasuresSourcesTypes.REAL;
                         }
                     }                    
                     // Estraggo il timestamp dell'ultimo valore scritto nel database WetNet
@@ -474,11 +475,11 @@ namespace WetLib
                     query = "SELECT ";
                     if (num_records > 0)
                         query += "TOP " + num_records.ToString() + " ";
-                    query += "Format(Datetime,'yyyy-MM-dd HH:mm:ss') AS " + measure_coord.timestamp_column + ", Format(Value, '#########0.00') AS '" + measure_coord.value_column + "' FROM " + measure_coord.table_name +
+                    query += "Format(Datetime,'yyyy-MM-dd HH:mm:ss') AS " + measure_coord.timestamp_column + ", Format(Value, '#########0.00', '" + CultureInfo.CurrentCulture.Name + "') AS '" + measure_coord.value_column + "' FROM " + measure_coord.table_name +
                         " WHERE History.TagName = '" + measure_coord.value_column + "'" +
                         " AND vValue IS NOT NULL " +
                         "AND (Quality = 0 OR Quality = 1) " +
-                        "AND (QualityDetail = 192 OR QualityDetail = 202 OR QualityDetail = 64) " +
+                        "AND (QualityDetail = 192 OR QualityDetail = 202 OR QualityDetail = 64 OR QualityDetail = 448) " +
                         //"AND wwResolution = " + ((int)(config.interpolation_time * 60 * 1000)).ToString() + " " +
                         //"AND wwRetrievalMode = 'Cyclic' " +
                         "AND wwRetrievalMode = 'Full' " +

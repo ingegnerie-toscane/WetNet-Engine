@@ -86,7 +86,7 @@ namespace WetLib
         /// <summary>
         /// Struttura per la definizione di un evento
         /// </summary>
-        struct Event
+        public struct Event
         {
             /// <summary>
             /// Giorno in cui si è verificato l'evento
@@ -267,7 +267,7 @@ namespace WetLib
                             " ORDER BY `timestamp` DESC LIMIT 1");
                         double last_high_band;
                         double last_low_band;
-                        if ((dt_bands.Rows.Count == 0) || ((low_band != 0.0d) && (high_band != 0.0d)))
+                        if ((dt_bands.Rows.Count == 0) || ((low_band == 0.0d) && (high_band == 0.0d)))
                         {
                             // Aggiungo le bande attuali nella tabella "districts_bands_history"
                             wet_db.ExecCustomCommand("INSERT INTO districts_bands_history VALUES ('" + DateTime.Now.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
