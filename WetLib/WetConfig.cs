@@ -56,7 +56,7 @@ namespace WetLib
     /// <summary>
     /// Tipi di misura supportati
     /// </summary>
-    enum MeasureTypes : int
+    public enum MeasureTypes : int
     {
         /// <summary>
         /// Misura di portata
@@ -285,7 +285,7 @@ namespace WetLib
     /// <remarks>
     /// Valido solo su modello DB >= 2.0
     /// </remarks>
-    enum MeasuresSourcesTypes : int
+    public enum MeasuresSourcesTypes : int
     {
         /// <summary>
         /// Misure reali acquisite via ODBC
