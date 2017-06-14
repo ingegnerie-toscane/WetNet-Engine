@@ -79,6 +79,10 @@ namespace WetLib
             [WebGet]
             Stream GetDayTrends();
 
+            [OperationContract]
+            [WebGet]
+            Stream GetDayTrendsByIdGis(string id_gis, string start_date);
+
             #endregion
         }
 
@@ -239,6 +243,8 @@ namespace WetLib
                             DateTime start = DateTime.MinValue;
                             DateTime stop = DateTime.Now;
 
+                            WetConfig wcfg = new WetConfig();
+                            int interval = wcfg.GetWJ_MeasuresData_Config().interpolation_time;
                             int id_measure = Convert.ToInt32(measure["id_measures"]);
                             MeterTypes mtype = (MeterTypes)Convert.ToInt32(measure["strumentation_type"]);
                             if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
@@ -263,11 +269,13 @@ namespace WetLib
                                     {
                                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
                                         double value = Convert.ToDouble(dr["value"]);
+                                        bool quality = !(WetUtility.IsMeasureInAlarm(id_measure, ts.Subtract(new TimeSpan(0, interval, 0)), ts.AddMinutes(interval)));
                                         ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks + "\"><InputType>" +
                                             ((int)WetUtility.GetInputTypeFromMeterType(mtype)).ToString() + "</InputType><ObjectType>" + ((int)mtype).ToString() +
                                             "</ObjectType><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
                                             "</Timestamp><Value>" + value.ToString().Replace(',', '.') +
-                                            "</Value></Record>";
+                                            "</Value><Quality>" + Convert.ToInt32(quality).ToString() +
+                                            "</Quality></Record>";
                                     }
                                 }
                             }
@@ -361,6 +369,103 @@ namespace WetLib
                                             "\"><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
                                             "</Timestamp><Value>" + value.ToString().Replace(',', '.') +
                                             "</Value></Record>";
+                                    }
+                                }
+                            }
+                            catch (Exception ex0)
+                            {
+                                WetDebug.GestException(ex0);
+                            }
+                        }
+                        ret += "</Records>";
+                    }
+                    else
+                        ret += "<Error>No entities founds!</Error>";
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.ContentType = "text/plain";
+                return new MemoryStream(Encoding.Default.GetBytes(ret));
+            }
+
+            /// <summary>
+            /// Restituisce un array di valori fra due date con quality
+            /// </summary>
+            /// <param name="start_date">Data di inzio</param>
+            /// <param name="stop_date">Data di fine</param>
+            /// <returns>Stringa con le serie timestamp/valore</returns>
+            /// <remarks>
+            /// Questa funzione restituisce tutti i distretti che abbiano un
+            /// IDGIS associato.
+            /// </remarks>
+            public Stream GetGISAllDistrictsEx(string start_date, string stop_date)
+            {
+                string ret = "<?xml version =\"1.0\"?>";
+
+                try
+                {
+                    DataTable districts;
+
+                    // Acquisisco tutte le misure presenti                
+                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                        districts = wet_db.ExecCustomQuery("SELECT * FROM districts WHERE sap_code IS NOT NULL AND sap_code <> ''");
+                    else
+                        districts = wet_db.ExecCustomQuery("SELECT * FROM districts WHERE gis_code IS NOT NULL AND gis_code <> ''");
+
+                    if (districts.Rows.Count > 0)
+                    {
+                        ret += "<Records>";
+                        // Ciclo per tutte le entità
+                        foreach (DataRow district in districts.Rows)
+                        {
+                            DataTable dt;
+                            string id_gis;
+                            DateTime start = DateTime.MinValue;
+                            DateTime stop = DateTime.Now;
+
+                            WetConfig wcfg = new WetLib.WetConfig();
+                            int id_district = Convert.ToInt32(district["id_districts"]);
+                            int interval = wcfg.GetWJ_MeasuresData_Config().interpolation_time;
+                            if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                            {
+                                id_gis = Convert.ToString(district["sap_code"]);
+                                if ((id_gis[0] != '$') && (id_gis.Last() != '$'))
+                                    continue;
+                                else
+                                    id_gis = id_gis.Remove(id_gis.Length - 1).Remove(0, 1);
+                            }
+                            else
+                                id_gis = Convert.ToString(district["gis_code"]);
+
+                            try
+                            {
+                                // Converto i valori in data/ora
+                                start = Convert.ToDateTime(start_date);
+                                stop = Convert.ToDateTime(stop_date);                                
+                                // Leggo i dati
+                                dt = wet_db.ExecCustomQuery("SELECT `timestamp`, `value` FROM data_districts WHERE districts_id_districts = " + id_district +
+                                    " AND `timestamp` >= '" + start.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
+                                    " AND `timestamp` <= '" + stop.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
+                                    " ORDER BY `timestamp` ASC");
+                                if (dt.Rows.Count > 0)
+                                {
+
+                                    // Ciclo per tutti i dati letti
+                                    foreach (DataRow dr in dt.Rows)
+                                    {
+                                        DateTime ts = Convert.ToDateTime(dr["timestamp"]);
+                                        double value = Convert.ToDouble(dr["value"]);
+                                        bool quality = !(WetUtility.IsDistrictInAlarm(id_district, ts.Subtract(new TimeSpan(0, interval, 0)), ts.AddMinutes(interval)));
+                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks +
+                                            "\"><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                                            "</Timestamp><Value>" + value.ToString().Replace(',', '.') +
+                                            "</Value><Quality>" + Convert.ToInt32(quality).ToString() +
+                                            "</Quality></Record>";
                                     }
                                 }
                             }
@@ -516,6 +621,7 @@ namespace WetLib
                             DateTime stop = DateTime.Now;
 
                             int id_district = Convert.ToInt32(district["id_districts"]);
+                            int ev_alpha = Convert.ToInt32(district["ev_alpha"]);
                             if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
                             {
                                 id_gis = Convert.ToString(district["sap_code"]);
@@ -533,7 +639,7 @@ namespace WetLib
                                 start = Convert.ToDateTime(start_date);
                                 stop = Convert.ToDateTime(stop_date);
                                 // Leggo i dati
-                                dt = wet_db.ExecCustomQuery("SELECT `day`, `min_night`, `min_day`, `max_day`, `avg_day` FROM districts_day_statistic WHERE districts_id_districts = " + id_district +
+                                dt = wet_db.ExecCustomQuery("SELECT `day`, `min_night`, `min_day`, `max_day`, `avg_day`, `real_leakage`, `min_night_pressure` FROM districts_day_statistic WHERE districts_id_districts = " + id_district +
                                     " AND `day` >= '" + start.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'" +
                                     " AND `day` <= '" + stop.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "'" +
                                     " ORDER BY `day` ASC");
@@ -548,12 +654,16 @@ namespace WetLib
                                         double min_day = WetMath.ValidateDouble(Convert.ToDouble(dr["min_day"] == DBNull.Value ? 0.0d : dr["min_day"]));
                                         double max_day = WetMath.ValidateDouble(Convert.ToDouble(dr["max_day"] == DBNull.Value ? 0.0d : dr["max_day"]));
                                         double avg_day = WetMath.ValidateDouble(Convert.ToDouble(dr["avg_day"] == DBNull.Value ? 0.0d : dr["avg_day"]));
+                                        double real_leakage = WetMath.ValidateDouble(Convert.ToDouble(dr["real_leakage"] == DBNull.Value ? 0.0d : dr["real_leakage"]));
+                                        double min_night_pressure = WetMath.ValidateDouble(Convert.ToDouble(dr["min_night_pressure"] == DBNull.Value ? 1.0d : dr["min_night_pressure"]));
+                                        double k_day = real_leakage / Math.Pow((min_night_pressure * 10.0d), ev_alpha);
                                         ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + day.Ticks + "\"><Day>" + day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
                                             "</Day><MinNight>" + min_night.ToString().Replace(',', '.') +
                                             "</MinNight><MinDay>" + min_day.ToString().Replace(',', '.') +
                                             "</MinDay><MaxDay>" + max_day.ToString().Replace(',', '.') +
                                             "</MaxDay><AvgDay>" + avg_day.ToString().Replace(',', '.') +
-                                            "</AvgDay></Record>";
+                                            "</AvgDay><KDay>" + k_day.ToString().Replace(',', '.') +
+                                            "</KDay></Record>";
                                     }
                                 }
                             }
@@ -1075,6 +1185,72 @@ namespace WetLib
                             }
                         }
                         ret += "</Records>";
+                    }
+                    else
+                        ret += "<Error>No entities founds!</Error>";
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.ContentType = "text/plain";
+                return new MemoryStream(Encoding.Default.GetBytes(ret));
+            }
+
+            /// <summary>
+            /// Restituisce le curve caratteristiche di tutti i distretti con ID GIS associato
+            /// </summary>
+            /// <param name="id_gis">ID del GIS</param>
+            /// <param name="start_date">Giorno di partenza</param>
+            /// <returns>Vettori</returns>
+            public Stream GetDayTrendsByIdGis(string id_gis, string start_date)
+            {
+                string ret = "<?xml version =\"1.0\"?>";
+
+                try
+                {
+                    DataTable districts;
+
+                    // Acquisisco tutte le misure presenti                
+                    if (WetDBConn.wetdb_model_version == WetDBConn.WetDBModelVersion.V1_0)
+                        districts = wet_db.ExecCustomQuery("SELECT * FROM districts WHERE sap_code IS NOT NULL AND sap_code = '" + id_gis.ToString() + "'");
+                    else
+                        districts = wet_db.ExecCustomQuery("SELECT * FROM districts WHERE gis_code IS NOT NULL AND gis_code = '" + id_gis.ToString() + "'");
+
+                    if (districts.Rows.Count == 1)
+                    {
+                        int id_district = Convert.ToInt32(districts.Rows[0]["id_districts"]);
+                        try
+                        {
+                            int interpolation_time_minutes = WetConfig.GetInterpolationTimeMinutes();
+                            int samples_in_day = (int)(24 * 60 / WetConfig.GetInterpolationTimeMinutes());
+                            DateTime day = Convert.ToDateTime(start_date);
+                            ret += "<Days>";
+                            for (int ii = 0; ii < 7; ii++)
+                            {
+                                day = day.AddDays(1.0d);
+                                ret += "<Day day=\"" + day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "\" day_of_week=\"" + day.DayOfWeek.ToString() + "\">";
+                                DayTrendSample[] dts = WetUtility.GetDayTrendEx(id_district, day, samples_in_day, 8);
+                                ret += "<Profile>";
+                                foreach (DayTrendSample dt in dts)
+                                {
+                                    ret += "<Timestamp>" + dt.timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</Timestamp>";
+                                    ret += "<LowValue>" + dt.lo_value.ToString("F2") + "</LowValue>";
+                                    ret += "<AvgValue>" + dt.avg_value.ToString("F2") + "</AvgValue>";
+                                    ret += "<HighValue>" + dt.hi_value.ToString("F2") + "</HighValue>";
+                                }
+                                ret += "</Profile>";
+                                ret += "</Day>";
+                            }
+                            ret += "</Days>";
+                        }
+                        catch (Exception ex0)
+                        {
+                            WetDebug.GestException(ex0);
+                        }
                     }
                     else
                         ret += "<Error>No entities founds!</Error>";

@@ -257,7 +257,11 @@ namespace WetLib
                         last_dest = start_date;
                     // Se la misura è critica prendo sempre un giorno arretrato
                     if (critical)
-                        last_dest = DateTime.Now.Subtract(new TimeSpan(1, 0, 0, 0));
+                    {
+                        DateTime tmp_start = DateTime.Now.Subtract(new TimeSpan(1, 0, 0, 0));
+                        if (tmp_start < last_dest)
+                            last_dest = tmp_start;
+                    }
                     // Inizio l'acquisiszione dei dati
                     DateTime last_source = DateTime.MinValue;
                     WetDBConn source_db = null;

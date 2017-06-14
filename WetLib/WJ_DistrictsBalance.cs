@@ -163,7 +163,13 @@ namespace WetLib
                     else
                     {
                         if (last > timestamp)
-                            start = DateTime.Now.Subtract(new TimeSpan(1, 0, 0, 0));
+                        {
+                            DateTime tmp_start = DateTime.Now.Subtract(new TimeSpan(1, 0, 0, 0));
+                            if (tmp_start > last)
+                                start = last;
+                            else
+                                start = tmp_start;
+                        }
                         else
                             start = timestamp;
                     }

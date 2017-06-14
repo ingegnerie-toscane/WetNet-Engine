@@ -440,6 +440,121 @@ namespace WetLib
             return profile;
         }
 
+        /// <summary>
+        /// Restituisce lo stato di allarme per una misura in un intervallo di tempo specificato
+        /// </summary>
+        /// <param name="id_measure">ID univoco della misura</param>
+        /// <param name="start_time">Inzio del periodo</param>
+        /// <param name="stop_time">Fine del periodo</param>
+        /// <returns>Stato di allarme</returns>
+        public static bool IsMeasureInAlarm(int id_measure, DateTime start_time, DateTime stop_time)
+        {
+            WetConfig wcfg = null;
+            WetDBConn wet_db = null;
+            int event_type;
+            bool is_in_alarm = false;
+
+            try
+            {
+                // Istanzio la connessione al database wetnet
+                wcfg = new WetConfig();
+                wet_db = new WetDBConn(wcfg.GetWetDBDSN(), null, null, true);
+                // Acquisisco lo stato degli allarmi per il periodo selezionato
+                DataTable alarms = wet_db.ExecCustomQuery("SELECT * FROM measures_alarms WHERE measures_id_measures = " + id_measure.ToString() +
+                    " AND `timestamp` >= '" + start_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                    "' AND `timestamp` < '" + stop_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + 
+                    "' ORDER BY `timestamp` DESC LIMIT 1");
+                if (alarms.Rows.Count == 0)
+                {
+                    // Non ci sono allarmi nel periodo selezionato, reimposto la query sul periodo precedente
+                    alarms = wet_db.ExecCustomQuery("SELECT * FROM measures_alarms WHERE measures_id_measures = " + id_measure.ToString() +
+                    " AND `timestamp` < '" + start_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                    "' ORDER BY `timestamp` DESC LIMIT 1");
+                    if (alarms.Rows.Count == 1)
+                    {
+                        event_type = Convert.ToInt32(alarms.Rows[0]["event_type"]);
+                        if (event_type == (int)WJ_MeasuresAlarms.EventTypes.ALARM_ON)
+                            is_in_alarm = true;
+                    }
+                }
+                else
+                    is_in_alarm = true;
+            }
+            catch (Exception ex)
+            {
+                WetDebug.GestException(ex);
+            }
+
+            return is_in_alarm;
+        }
+
+        /// <summary>
+        /// Restituisce un vettore di ID misure associate ad un distretto
+        /// </summary>
+        /// <param name="id_district">ID del distretto da analizzare</param>
+        /// <returns>Vettore di ID misure</returns>
+        public static int[] GetMeasuresInDistrict(int id_district)
+        {
+            WetConfig wcfg = null;
+            WetDBConn wet_db = null;
+            List<int> ids = new List<int>();
+
+            try
+            {
+                // Istanzio la connessione al database wetnet
+                wcfg = new WetConfig();
+                wet_db = new WetDBConn(wcfg.GetWetDBDSN(), null, null, true);
+                // Effetto la join fra tabelle
+                DataTable measures = wet_db.ExecCustomQuery("SELECT m.id_measures FROM districts d " +
+                    "INNER JOIN measures_has_districts mhd ON d.id_districts = mhd.districts_id_districts " +
+                    "INNER JOIN measures m ON mhd.measures_id_measures = m.id_measures " +
+                    "WHERE mhd.districts_id_districts = " + id_district.ToString() +
+                    " ORDER BY m.id_measures ASC");
+                foreach (DataRow dr in measures.Rows)
+                    ids.Add(Convert.ToInt32(dr["id_measures"]));
+            }
+            catch (Exception ex)
+            {
+                WetDebug.GestException(ex);
+            }
+
+            return ids.ToArray();
+        }
+
+        /// <summary>
+        /// Restituisce lo stato di allarme per un distretto in un intervallo di tempo specificato
+        /// </summary>
+        /// <param name="id_district">ID univoco del distretto</param>
+        /// <param name="start_time">Inizio del periodo</param>
+        /// <param name="stop_time">Fine del periodo</param>
+        /// <returns>Stato di allarme</returns>
+        public static bool IsDistrictInAlarm(int id_district, DateTime start_time, DateTime stop_time)
+        {
+            bool is_in_alarm = false;
+
+            try
+            {
+                int[] measures = GetMeasuresInDistrict(id_district);
+                if (measures != null)
+                {
+                    foreach (int id_measure in measures)
+                    {
+                        if (IsMeasureInAlarm(id_measure, start_time, stop_time))
+                        {
+                            is_in_alarm = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                WetDebug.GestException(ex);
+            }
+
+            return is_in_alarm;
+        }
+
         #endregion
     }
 }
