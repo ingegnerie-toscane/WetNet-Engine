@@ -60,6 +60,26 @@ namespace WetLib
             WetUtility.WriteEventLog(message, EventLogEntryType.Error);            
         }
 
+        /// <summary>
+        /// Gestore delle eccezioni
+        /// </summary>
+        /// <param name="ex">Eccezione</param>
+        public static void GestException(Exception ex, string custom_message)
+        {
+            if (Debugger.IsAttached)
+            {
+                Debug.Print(ex.StackTrace.ToString());
+                //Debugger.Break();
+            }
+            // Stampo nel log eventi
+            string message =
+                "SOURCE      : " + ex.Source + Environment.NewLine +
+                "MESSAGE     : " + ex.Message + Environment.NewLine +
+                "STACK TRACE : " + Environment.NewLine + ex.StackTrace + Environment.NewLine + Environment.NewLine +
+                "CMESSAGE    : " + Environment.NewLine + custom_message;
+            WetUtility.WriteEventLog(message, EventLogEntryType.Error);
+        }
+
         #endregion
     }
 }

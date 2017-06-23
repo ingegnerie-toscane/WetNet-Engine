@@ -110,73 +110,110 @@ namespace WetLib
         /// </summary>
         protected override void DoJob()
         {
+            bool tree_ok = false;
+
             // Se il Job non è abilitato esco
             if (!config.enabled)
                 return;
             
             try
             {
-                // Acquisisco tutte le path della base FTP
-                string[] folders = wet_ftp.GetFolderTree(wet_ftp.GetCurrentFolder());
-                // Ciclo per tutte le cartelle alla ricerca di files validi
-                foreach (string folder in folders)
+                List<string> folders = new List<string>();
+                do
                 {
-                    // Elenco i files della cartella
-                    List<string> files = wet_ftp.ListFiles(folder).ToList();
-                    // Ordino i files per nome in ordine crescente
-                    files.Sort();
-                    // Ciclo per tutti i files scremando quelli non necessari
-                    Dictionary<string, string> device_lastfile = new Dictionary<string, string>();
-                    foreach (string file in files)
+                    try
                     {
-                        // Controllo che il nome abbia estensione CSV
-                        if (file.Length < 5)
-                            continue;
-                        if (file.Substring(file.Length - 4, 4).ToLower() != ".csv")
-                            continue;
-                        // Se il file non contiene separatori è segno che non è valido
-                        if (!file.Any(x => (x == '-') || (x == '_')))
-                            continue;
-                        // Determino il tipo di separatore per il file
-                        char fsep = '-';
-                        if (file.Contains('_'))
-                            fsep = '_';
-                        // Determino il tipo di separatore per il formato CSV
-                        char separator = fsep == '-' ? ';' : '\t';
-                        // Determino il nome del misuratore
-                        string device_name = file.Substring(0, file.IndexOf(fsep)).ToLower();
-                        // Se il device è già stato processato continuo
-                        if (!device_lastfile.ContainsKey(device_name))
+                        // Acquisisco tutte le path della base FTP
+                        folders = wet_ftp.GetFolderTree(wet_ftp.GetCurrentFolder()).ToList();
+                        tree_ok = true;
+                    }
+                    catch (Exception ex3)
+                    {
+                        WetDebug.GestException(ex3, "GetFolderTree");
+                        Sleep(10000);
+                    }
+                } while (!tree_ok);
+                // Ciclo per tutte le cartelle alla ricerca di files validi
+                for (int jj = 0; jj < folders.Count; jj++)
+                {
+                    string folder = folders[jj];
+                    try
+                    {
+                        // Elenco i files della cartella
+                        List<string> files = wet_ftp.ListFiles(folder).ToList();
+                        // Ordino i files per nome in ordine crescente
+                        files.Sort();
+                        // Ciclo per tutti i files scremando quelli non necessari
+                        Dictionary<string, string> device_lastfile = new Dictionary<string, string>();
+                        for (int ii = 0; ii < files.Count; ii++)
                         {
-                            // Controllo se lo strumento esiste nel database
-                            DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM wlb_identities WHERE `wlb_name` = '" + device_name + "'");
-                            if (dt.Rows.Count == 0)
+                            string file = files[ii];
+                            try
                             {
-                                // Se il device non esiste, lo creo
-                                wet_db.ExecCustomCommand("INSERT INTO wlb_identities VALUES ('" + device_name + "', '', '')");
-                                // Aggiorno il dizionario
-                                device_lastfile.Add(device_name, string.Empty);
+                                // Controllo che il nome abbia estensione CSV
+                                if (file.Length < 5)
+                                    continue;
+                                if (file.Substring(file.Length - 4, 4).ToLower() != ".csv")
+                                    continue;
+                                // Se il file non contiene separatori è segno che non è valido
+                                if (!file.Any(x => (x == '-') || (x == '_')))
+                                    continue;
+                                // Determino il tipo di separatore per il file
+                                char fsep = '-';
+                                if (file.Contains('_'))
+                                    fsep = '_';
+                                // Determino il tipo di separatore per il formato CSV
+                                char separator = fsep == '-' ? ';' : '\t';
+                                // Determino il nome del misuratore
+                                string device_name = file.Substring(0, file.IndexOf(fsep)).ToLower();
+                                // Se il device è già stato processato continuo
+                                if (!device_lastfile.ContainsKey(device_name))
+                                {
+                                    // Controllo se lo strumento esiste nel database
+                                    DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM wlb_identities WHERE `wlb_name` = '" + device_name + "'");
+                                    if (dt.Rows.Count == 0)
+                                    {
+                                        // Se il device non esiste, lo creo
+                                        wet_db.ExecCustomCommand("INSERT INTO wlb_identities VALUES ('" + device_name + "', '', '')");
+                                        // Aggiorno il dizionario
+                                        device_lastfile.Add(device_name, string.Empty);
+                                    }
+                                    else
+                                    {
+                                        // Il device esiste già nel db, acquisisco l'ultimo file processato
+                                        device_lastfile.Add(device_name, Convert.ToString(dt.Rows[0]["last_processed_filename"]));
+                                    }
+                                }
+                                // Controllo se il file è da analizzare, l'indice nella lista ordinata deve essere maggiore
+                                if (device_lastfile[device_name] != string.Empty)
+                                {
+                                    if (files.IndexOf(file) <= files.IndexOf(device_lastfile[device_name]))
+                                        continue;
+                                }
+                                // Il file è valido, eseguo il download
+                                DataTable file_dt = wet_ftp.DownloadCSVFileToTable(folder + "/" + file, separator, 1, 7, "MM/dd/yy HH:mm:ss", false);
+                                // Aggiungo il campo di riferimento
+                                file_dt.Columns.Add(new DataColumn("wlb_identities_wlb_name", typeof(string), "'" + device_name + "'"));
+                                // Inserisco i dati in tabella
+                                wet_db.TableInsert(file_dt, "wlb_data");
+                                // Aggiorno il campo dell'ultimo file processato
+                                wet_db.ExecCustomCommand("UPDATE wlb_identities SET `last_processed_filename` = '" + file + "' WHERE `wlb_name` = '" + device_name + "'");
+                                // Attendo...
+                                Sleep(1000);
                             }
-                            else
+                            catch (Exception ex2)
                             {
-                                // Il device esiste già nel db, acquisisco l'ultimo file processato
-                                device_lastfile.Add(device_name, Convert.ToString(dt.Rows[0]["last_processed_filename"]));
+                                WetDebug.GestException(ex2, file);
+                                ii--;
+                                Sleep(10000);
                             }
                         }
-                        // Controllo se il file è da analizzare, l'indice nella lista ordinata deve essere maggiore
-                        if (device_lastfile[device_name] != string.Empty)
-                        {
-                            if (files.IndexOf(file) <= files.IndexOf(device_lastfile[device_name]))
-                                continue;
-                        }
-                        // Il file è valido, eseguo il download
-                        DataTable file_dt = wet_ftp.DownloadCSVFileToTable(folder + "/" + file, separator, 1, 7, "MM/dd/yy HH:mm:ss", false);
-                        // Aggiungo il campo di riferimento
-                        file_dt.Columns.Add(new DataColumn("wlb_identities_wlb_name", typeof(string), "'" + device_name + "'"));
-                        // Inserisco i dati in tabella
-                        wet_db.TableInsert(file_dt, "wlb_data");
-                        // Aggiorno il campo dell'ultimo file processato
-                        wet_db.ExecCustomCommand("UPDATE wlb_identities SET `last_processed_filename` = '" + file + "' WHERE `wlb_name` = '" + device_name + "'");
+                    }
+                    catch (Exception ex1)
+                    {
+                        WetDebug.GestException(ex1, folder);
+                        jj--;
+                        Sleep(10000);
                     }
                 }
             }

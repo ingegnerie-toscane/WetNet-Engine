@@ -172,7 +172,32 @@ namespace WetLib
         /// <summary>
         /// Frequenza del motore
         /// </summary>
-        MOTOR_FREQUENCY = 11
+        MOTOR_FREQUENCY = 11,
+
+        /// <summary>
+        /// Solidi sospesi
+        /// </summary>
+        SST = 12,
+
+        /// <summary>
+        /// Ossigeno disciolto
+        /// </summary>
+        OX = 13,
+
+        /// <summary>
+        /// Ammonio
+        /// </summary>
+        NH4 = 14,
+
+        /// <summary>
+        /// Misuratore elettrico
+        /// </summary>
+        POWER_METER = 15,
+
+        /// <summary>
+        /// Misuratore di torbidità
+        /// </summary>
+        TURBIDITY_METER = 16
     }
 
     /// <summary>

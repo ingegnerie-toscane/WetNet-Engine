@@ -367,7 +367,7 @@ namespace WetLib
                 }
                 catch (Exception ex)
                 {
-                    WetDebug.GestException(ex);
+                    WetDebug.GestException(ex, query);
                 }
                 finally
                 {
