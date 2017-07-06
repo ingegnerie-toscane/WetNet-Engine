@@ -38,6 +38,15 @@ namespace WetLib
     /// </summary>
     sealed class WJ_Agent_WetNetLinkBox : WetJob
     {
+        #region Costanti
+
+        /// <summary>
+        /// Numero di tentativi
+        /// </summary>
+        const int RETRIES = 5;
+
+        #endregion
+
         #region Istanze
 
         /// <summary>
@@ -111,6 +120,9 @@ namespace WetLib
         protected override void DoJob()
         {
             bool tree_ok = false;
+            int retries_folder;
+            int retries_subfolder;
+            int retries_file;
 
             // Se il Job non è abilitato esco
             if (!config.enabled)
@@ -119,6 +131,7 @@ namespace WetLib
             try
             {
                 List<string> folders = new List<string>();
+                retries_folder = RETRIES;
                 do
                 {
                     try
@@ -130,10 +143,12 @@ namespace WetLib
                     catch (Exception ex3)
                     {
                         WetDebug.GestException(ex3, "GetFolderTree");
+                        retries_folder--;
                         Sleep(10000);
                     }
-                } while (!tree_ok);
+                } while ((!tree_ok) && (retries_folder > 0));
                 // Ciclo per tutte le cartelle alla ricerca di files validi
+                retries_subfolder = RETRIES;
                 for (int jj = 0; jj < folders.Count; jj++)
                 {
                     string folder = folders[jj];
@@ -145,6 +160,7 @@ namespace WetLib
                         files.Sort();
                         // Ciclo per tutti i files scremando quelli non necessari
                         Dictionary<string, string> device_lastfile = new Dictionary<string, string>();
+                        retries_file = RETRIES;
                         for (int ii = 0; ii < files.Count; ii++)
                         {
                             string file = files[ii];
@@ -198,22 +214,38 @@ namespace WetLib
                                 wet_db.TableInsert(file_dt, "wlb_data");
                                 // Aggiorno il campo dell'ultimo file processato
                                 wet_db.ExecCustomCommand("UPDATE wlb_identities SET `last_processed_filename` = '" + file + "' WHERE `wlb_name` = '" + device_name + "'");
+                                // Aggiorno il contatore
+                                retries_file = RETRIES;
                                 // Attendo...
                                 Sleep(1000);
                             }
                             catch (Exception ex2)
                             {
                                 WetDebug.GestException(ex2, file);
-                                ii--;
-                                Sleep(10000);
+                                if (retries_file > 0)
+                                {
+                                    retries_file--;
+                                    ii--;
+                                    Sleep(10000);
+                                }
+                                else
+                                    retries_file = RETRIES;
                             }
                         }
+                        // Aggiorno il contatore
+                        retries_subfolder = RETRIES;
                     }
                     catch (Exception ex1)
                     {
                         WetDebug.GestException(ex1, folder);
-                        jj--;
-                        Sleep(10000);
+                        if (retries_subfolder > 0)
+                        {
+                            retries_subfolder--;
+                            jj--;
+                            Sleep(10000);
+                        }
+                        else
+                            retries_subfolder = RETRIES;
                     }
                 }
             }
