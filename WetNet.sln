@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+# Visual Studio 15
+VisualStudioVersion = 15.0.26730.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WetLib", "WetLib\WetLib.csproj", "{A2FBDB6B-4EE1-40EC-ADCB-982EA41306F8}"
 EndProject
@@ -10,6 +10,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D8554E51-8710-4B9B-AA73-9DC32B64D10C}"
 	ProjectSection(SolutionItems) = preProject
 		LICENSE.txt = LICENSE.txt
+		Performance1.psess = Performance1.psess
 	EndProjectSection
 EndProject
 Global
@@ -44,5 +45,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {45F6AEA2-8B72-4A32-8172-0A99894A0540}
 	EndGlobalSection
 EndGlobal

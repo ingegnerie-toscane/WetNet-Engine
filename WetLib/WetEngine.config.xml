@@ -6,6 +6,13 @@ Configuration file for WetNet, you MUST to configure all fields marked as '### M
   <!-- ODBC DSN of WetNet database -->
   <!-- ### MANDATORY ### -->
   <WetDBDSN></WetDBDSN>
+  <!-- Utilizzo di un server proxy -->
+  <Proxy use="false">
+    <Address></Address>
+    <Port></Port>
+    <Username></Username>
+    <Password></Password>
+  </Proxy>
   <!-- Porta TCP di ascolto -->
   <WebServicePort></WebServicePort>
   <!-- SMTP server for events reports -->

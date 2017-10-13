@@ -132,7 +132,9 @@ namespace WetLib
             /// </remarks>
             public Stream GetGISAllFieldPoints(string start_date, string stop_date)
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append("<?xml version =\"1.0\"?>");               
 
                 try
                 {
@@ -146,7 +148,7 @@ namespace WetLib
 
                     if (measures.Rows.Count > 0)
                     {
-                        ret += "<Records>";
+                        sb.Append("<Records>");
                         // Ciclo per tutte le entità
                         foreach (DataRow measure in measures.Rows)
                         {
@@ -173,29 +175,29 @@ namespace WetLib
                                     " AND `timestamp` <= '" + stop.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
                                     " ORDER BY `timestamp` ASC");
                                 if (dt.Rows.Count > 0)
-                                {                                    
+                                {
                                     // Ciclo per tutti i dati letti
                                     foreach (DataRow dr in dt.Rows)
                                     {
                                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
-                                        double value = Convert.ToDouble(dr["value"]);
-                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks + "\"><InputType>" +
+                                        double value = Convert.ToDouble(dr["value"]);                                        
+                                        sb.Append("<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks + "\"><InputType>" +
                                             ((int)WetUtility.GetInputTypeFromMeterType(mtype)).ToString() + "</InputType><ObjectType>" + ((int)mtype).ToString() +
                                             "</ObjectType><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
                                             "</Timestamp><Value>" + value.ToString().Replace(',', '.') +
-                                            "</Value></Record>";
-                                    }                                    
+                                            "</Value></Record>");
+                                    }
                                 }
                             }
                             catch (Exception ex0)
                             {
                                 WetDebug.GestException(ex0);
                             }
-                        }                        
-                        ret += "</Records>";
+                        }
+                        sb.Append("</Records>");
                     }
                     else
-                        ret += "<Error>No entities founds!</Error>";                    
+                        sb.Append("<Error>No entities founds!</Error>");
                 }
                 catch (Exception ex)
                 {
@@ -205,7 +207,7 @@ namespace WetLib
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));                
             }
 
             /// <summary>
@@ -220,7 +222,9 @@ namespace WetLib
             /// </remarks>
             public Stream GetGISAllFieldPointsEx(string start_date, string stop_date)
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append("<?xml version =\"1.0\"?>");
 
                 try
                 {
@@ -234,7 +238,7 @@ namespace WetLib
 
                     if (measures.Rows.Count > 0)
                     {
-                        ret += "<Records>";
+                        sb.Append("<Records>");
                         // Ciclo per tutte le entità
                         foreach (DataRow measure in measures.Rows)
                         {
@@ -270,12 +274,12 @@ namespace WetLib
                                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
                                         double value = Convert.ToDouble(dr["value"]);
                                         bool quality = !(WetUtility.IsMeasureInAlarm(id_measure, ts.Subtract(new TimeSpan(0, interval, 0)), ts.AddMinutes(interval)));
-                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks + "\"><InputType>" +
+                                        sb.Append("<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks + "\"><InputType>" +
                                             ((int)WetUtility.GetInputTypeFromMeterType(mtype)).ToString() + "</InputType><ObjectType>" + ((int)mtype).ToString() +
                                             "</ObjectType><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
                                             "</Timestamp><Value>" + value.ToString().Replace(',', '.') +
                                             "</Value><Quality>" + Convert.ToInt32(quality).ToString() +
-                                            "</Quality></Record>";
+                                            "</Quality></Record>");
                                     }
                                 }
                             }
@@ -284,10 +288,10 @@ namespace WetLib
                                 WetDebug.GestException(ex0);
                             }
                         }
-                        ret += "</Records>";
+                        sb.Append("</Records>");
                     }
                     else
-                        ret += "<Error>No entities founds!</Error>";
+                        sb.Append("<Error>No entities founds!</Error>");
                 }
                 catch (Exception ex)
                 {
@@ -297,7 +301,7 @@ namespace WetLib
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -312,7 +316,9 @@ namespace WetLib
             /// </remarks>
             public Stream GetGISAllDistricts(string start_date, string stop_date)
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append("<?xml version =\"1.0\"?>");
 
                 try
                 {
@@ -326,7 +332,7 @@ namespace WetLib
 
                     if (districts.Rows.Count > 0)
                     {
-                        ret += "<Records>";
+                        sb.Append("<Records>");
                         // Ciclo per tutte le entità
                         foreach (DataRow district in districts.Rows)
                         {
@@ -365,10 +371,10 @@ namespace WetLib
                                     {
                                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
                                         double value = Convert.ToDouble(dr["value"]);
-                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks + 
+                                        sb.Append("<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks + 
                                             "\"><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
                                             "</Timestamp><Value>" + value.ToString().Replace(',', '.') +
-                                            "</Value></Record>";
+                                            "</Value></Record>");
                                     }
                                 }
                             }
@@ -377,10 +383,10 @@ namespace WetLib
                                 WetDebug.GestException(ex0);
                             }
                         }
-                        ret += "</Records>";
+                        sb.Append("</Records>");
                     }
                     else
-                        ret += "<Error>No entities founds!</Error>";
+                        sb.Append("<Error>No entities founds!</Error>");
                 }
                 catch (Exception ex)
                 {
@@ -390,7 +396,7 @@ namespace WetLib
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -405,7 +411,9 @@ namespace WetLib
             /// </remarks>
             public Stream GetGISAllDistrictsEx(string start_date, string stop_date)
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append("<?xml version =\"1.0\"?>");
 
                 try
                 {
@@ -419,7 +427,7 @@ namespace WetLib
 
                     if (districts.Rows.Count > 0)
                     {
-                        ret += "<Records>";
+                        sb.Append("<Records>");
                         // Ciclo per tutte le entità
                         foreach (DataRow district in districts.Rows)
                         {
@@ -461,11 +469,11 @@ namespace WetLib
                                         DateTime ts = Convert.ToDateTime(dr["timestamp"]);
                                         double value = Convert.ToDouble(dr["value"]);
                                         bool quality = !(WetUtility.IsDistrictInAlarm(id_district, ts.Subtract(new TimeSpan(0, interval, 0)), ts.AddMinutes(interval)));
-                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks +
+                                        sb.Append("<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + ts.Ticks +
                                             "\"><Timestamp>" + ts.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
                                             "</Timestamp><Value>" + value.ToString().Replace(',', '.') +
                                             "</Value><Quality>" + Convert.ToInt32(quality).ToString() +
-                                            "</Quality></Record>";
+                                            "</Quality></Record>");
                                     }
                                 }
                             }
@@ -474,10 +482,10 @@ namespace WetLib
                                 WetDebug.GestException(ex0);
                             }
                         }
-                        ret += "</Records>";
+                        sb.Append("</Records>");
                     }
                     else
-                        ret += "<Error>No entities founds!</Error>";
+                        sb.Append("<Error>No entities founds!</Error>");
                 }
                 catch (Exception ex)
                 {
@@ -487,7 +495,7 @@ namespace WetLib
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -502,7 +510,9 @@ namespace WetLib
             /// </remarks>
             public Stream GetGISAllFieldPointsDayStatistics(string start_date, string stop_date)
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append("<?xml version =\"1.0\"?>");
                 
                 try
                 {
@@ -516,7 +526,7 @@ namespace WetLib
 
                     if (measures.Rows.Count > 0)
                     {
-                        ret += "<Records>";
+                        sb.Append("<Records>");
                         // Ciclo per tutte le entità
                         foreach (DataRow measure in measures.Rows)
                         {
@@ -553,14 +563,14 @@ namespace WetLib
                                         double min_day = WetMath.ValidateDouble(Convert.ToDouble(dr["min_day"] == DBNull.Value ? 0.0d : dr["min_day"]));
                                         double max_day = WetMath.ValidateDouble(Convert.ToDouble(dr["max_day"] == DBNull.Value ? 0.0d : dr["max_day"]));
                                         double avg_day = WetMath.ValidateDouble(Convert.ToDouble(dr["avg_day"] == DBNull.Value ? 0.0d : dr["avg_day"]));
-                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + day.Ticks + "\"><InputType>" +
+                                        sb.Append("<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + day.Ticks + "\"><InputType>" +
                                             ((int)WetUtility.GetInputTypeFromMeterType(mtype)).ToString() + "</InputType><ObjectType>" + ((int)mtype).ToString() +
                                             "</ObjectType><Day>" + day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
                                             "</Day><MinNight>" + min_night.ToString().Replace(',', '.') +
                                             "</MinNight><MinDay>" + min_day.ToString().Replace(',', '.') +
                                             "</MinDay><MaxDay>" + max_day.ToString().Replace(',', '.') +
                                             "</MaxDay><AvgDay>" + avg_day.ToString().Replace(',', '.') +
-                                            "</AvgDay></Record>";
+                                            "</AvgDay></Record>");
                                     }
                                 }
                             }
@@ -569,10 +579,10 @@ namespace WetLib
                                 WetDebug.GestException(ex0);
                             }
                         }
-                        ret += "</Records>";
+                        sb.Append("</Records>");
                     }
                     else
-                        ret += "<Error>No entities founds!</Error>";
+                        sb.Append("<Error>No entities founds!</Error>");
                 }
                 catch (Exception ex)
                 {
@@ -582,7 +592,7 @@ namespace WetLib
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -597,7 +607,9 @@ namespace WetLib
             /// </remarks>
             public Stream GetGISAllDistrictsDayStatistics(string start_date, string stop_date)
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append("<?xml version =\"1.0\"?>");
 
                 try
                 {
@@ -611,7 +623,7 @@ namespace WetLib
 
                     if (districts.Rows.Count > 0)
                     {
-                        ret += "<Records>";
+                        sb.Append("<Records>");
                         // Ciclo per tutte le entità
                         foreach (DataRow district in districts.Rows)
                         {
@@ -657,13 +669,13 @@ namespace WetLib
                                         double real_leakage = WetMath.ValidateDouble(Convert.ToDouble(dr["real_leakage"] == DBNull.Value ? 0.0d : dr["real_leakage"]));
                                         double min_night_pressure = WetMath.ValidateDouble(Convert.ToDouble(dr["min_night_pressure"] == DBNull.Value ? 1.0d : dr["min_night_pressure"]));
                                         double k_day = real_leakage / Math.Pow((min_night_pressure * 10.0d), ev_alpha);
-                                        ret += "<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + day.Ticks + "\"><Day>" + day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
+                                        sb.Append("<Record id_gis=\"" + id_gis.ToString() + "\" id=\"" + day.Ticks + "\"><Day>" + day.Date.ToString(WetDBConn.MYSQL_DATE_FORMAT) +
                                             "</Day><MinNight>" + min_night.ToString().Replace(',', '.') +
                                             "</MinNight><MinDay>" + min_day.ToString().Replace(',', '.') +
                                             "</MinDay><MaxDay>" + max_day.ToString().Replace(',', '.') +
                                             "</MaxDay><AvgDay>" + avg_day.ToString().Replace(',', '.') +
                                             "</AvgDay><KDay>" + k_day.ToString().Replace(',', '.') +
-                                            "</KDay></Record>";
+                                            "</KDay></Record>");
                                     }
                                 }
                             }
@@ -672,10 +684,10 @@ namespace WetLib
                                 WetDebug.GestException(ex0);
                             }
                         }
-                        ret += "</Records>";
+                        sb.Append("</Records>");
                     }
                     else
-                        ret += "<Error>No entities founds!</Error>";
+                        sb.Append("<Error>No entities founds!</Error>");
                 }
                 catch (Exception ex)
                 {
@@ -685,7 +697,7 @@ namespace WetLib
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -694,39 +706,41 @@ namespace WetLib
             /// <returns>Tipi di ingresso</returns>
             public Stream GetFieldPointsInputTypes()
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
 
-                ret += "<InputsTypes>";
+                sb.Append("<?xml version =\"1.0\"?>");
+
+                sb.Append("<InputsTypes>");
                 foreach (InputMeterTypes imt in Enum.GetValues(typeof(InputMeterTypes)))
                 {
-                    ret += "<InputType id=\"" + ((int)imt).ToString() + "\">";
+                    sb.Append("<InputType id=\"" + ((int)imt).ToString() + "\">");
                     switch (imt)
                     {
                         default:
                         case InputMeterTypes.UNKNOWN:
-                            ret += "<Description>Unknown</Description>";
+                            sb.Append("<Description>Unknown</Description>");
                             break;
 
                         case InputMeterTypes.ANALOG_INPUT:
-                            ret += "<Description>Analog input</Description>";
+                            sb.Append("<Description>Analog input</Description>");
                             break;
 
                         case InputMeterTypes.PULSE_INPUT:
-                            ret += "<Description>Digital pulse input</Description>";
+                            sb.Append("<Description>Digital pulse input</Description>");
                             break;
 
                         case InputMeterTypes.DIGITAL_STATE:
-                            ret += "<Description>Digital binary state</Description>";
+                            sb.Append("<Description>Digital binary state</Description>");
                             break;
                     }                    
-                    ret += "</InputType>";
+                    sb.Append("</InputType>");
                 }
-                ret += "</InputsTypes>";
+                sb.Append("</InputsTypes>");
 
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -735,71 +749,73 @@ namespace WetLib
             /// <returns>Restituisce i tipi di misure disponibili</returns>
             public Stream GetFieldPointsObjectTypes()
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
 
-                ret += "<ObjectTypes>";
+                sb.Append("<?xml version =\"1.0\"?>");
+
+                sb.Append("<ObjectTypes>");
                 foreach (MeterTypes mtype in Enum.GetValues(typeof(MeterTypes)))
                 {
-                    ret += "<ObjectType id=\"" + ((int)mtype).ToString() + "\">";
+                    sb.Append("<ObjectType id=\"" + ((int)mtype).ToString() + "\">");
                     switch (mtype)
                     {
                         default:
                         case MeterTypes.UNKNOWN:
-                            ret += "<Class>Unknown measure</Class><EngineeringUnits></EngineeringUnits>";
+                            sb.Append("<Class>Unknown measure</Class><EngineeringUnits></EngineeringUnits>");
                             break;
 
                         case MeterTypes.LCF_FLOW_METER:
-                            ret += "<Class>LCF flow meter</Class><EngineeringUnits>l/s</EngineeringUnits>";
+                            sb.Append("<Class>LCF flow meter</Class><EngineeringUnits>l/s</EngineeringUnits>");
                             break;
 
                         case MeterTypes.MAGNETIC_FLOW_METER:
-                            ret += "<Class>Magnetic flow meter</Class><EngineeringUnits>l/s</EngineeringUnits>";
+                            sb.Append("<Class>Magnetic flow meter</Class><EngineeringUnits>l/s</EngineeringUnits>");
                             break;
 
                         case MeterTypes.ULTRASONIC_FLOW_METER:
-                            ret += "<Class>Ultrasonic flow meter</Class><EngineeringUnits>l/s</EngineeringUnits>";
+                            sb.Append("<Class>Ultrasonic flow meter</Class><EngineeringUnits>l/s</EngineeringUnits>");
                             break;
 
                         case MeterTypes.PRESSURE_METER:
-                            ret += "<Class>Pressure measure</Class><EngineeringUnits>bar</EngineeringUnits>";
+                            sb.Append("<Class>Pressure measure</Class><EngineeringUnits>bar</EngineeringUnits>");
                             break;
 
                         case MeterTypes.VOLUMETRIC_COUNTER:
-                            ret += "<Class>Flow conversion from volumetric counter</Class><EngineeringUnits>l/s</EngineeringUnits>";
+                            sb.Append("<Class>Flow conversion from volumetric counter</Class><EngineeringUnits>l/s</EngineeringUnits>");
                             break;
 
                         case MeterTypes.PUMP:
-                            ret += "<Class>Pump status</Class><EngineeringUnits>Digital state</EngineeringUnits>";
+                            sb.Append("<Class>Pump status</Class><EngineeringUnits>Digital state</EngineeringUnits>");
                             break;
 
                         case MeterTypes.VALVE_NO_REGULATION:
-                            ret += "<Class>Valve with no regulation</Class><EngineeringUnits>Digital state</EngineeringUnits>";
+                            sb.Append("<Class>Valve with no regulation</Class><EngineeringUnits>Digital state</EngineeringUnits>");
                             break;
 
                         case MeterTypes.VALVE_REGULATION:
-                            ret += "<Class>Valve with regulation</Class><EngineeringUnits>%</EngineeringUnits>";
+                            sb.Append("<Class>Valve with regulation</Class><EngineeringUnits>%</EngineeringUnits>");
                             break;
 
                         case MeterTypes.TANK:
-                            ret += "<Class>Tank level</Class><EngineeringUnits>mt</EngineeringUnits>";
+                            sb.Append("<Class>Tank level</Class><EngineeringUnits>mt</EngineeringUnits>");
                             break;
 
                         case MeterTypes.WELL:
-                            ret += "<Class>Well level</Class><EngineeringUnits>mt</EngineeringUnits>";
+                            sb.Append("<Class>Well level</Class><EngineeringUnits>mt</EngineeringUnits>");
                             break;
 
                         case MeterTypes.MOTOR_FREQUENCY:
-                            ret += "<Class>Motor frequency</Class><EngineeringUnits>Hz</EngineeringUnits>";
+                            sb.Append("<Class>Motor frequency</Class><EngineeringUnits>Hz</EngineeringUnits>");
                             break;
                     }
-                    ret += "</ObjectType>";
+                    sb.Append("</ObjectType>");
                 }
-                ret += "</ObjectTypes>";
+                sb.Append("</ObjectTypes>");
 
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -907,11 +923,13 @@ namespace WetLib
             /// <returns>Restituisce un vettore con 12 valori</returns>
             public Stream GetMonthsAverageOfYear(string id_district, string year)
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append("<?xml version =\"1.0\"?>");
 
                 try
                 {
-                    ret += "<Months>";
+                    sb.Append("<Months>");
                     // Designazione finestar temporale
                     DateTime start_date = new DateTime(Convert.ToInt32(year), 1, 1);
                     DateTime stop_date = start_date.AddYears(1);
@@ -924,8 +942,8 @@ namespace WetLib
                     {
                         int month = Convert.ToDateTime(dr["month"]).Month;
                         double avg = Convert.ToDouble(dr["avg_month"]);
-                        ret += "<Month id=\"" + month.ToString() + "\">" + "<Average>" + avg.ToString() +
-                            "</Average></Month>";
+                        sb.Append("<Month id=\"" + month.ToString() + "\">" + "<Average>" + avg.ToString() +
+                            "</Average></Month>");
                     }
                 }
                 catch (Exception ex)
@@ -934,13 +952,13 @@ namespace WetLib
                 }
                 finally
                 {
-                    ret += "</Months>";
+                    sb.Append("</Months>");
                 }
 
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -950,10 +968,12 @@ namespace WetLib
             /// <param name="date">Data da analizzare</param>
             /// <returns>Vettore con i campioni giornalieri</returns>
             public Stream GetDayTrend(string id_district, string date)
-            {                
-                string ret = "<?xml version =\"1.0\"?>";
+            {
+                StringBuilder sb = new StringBuilder();
 
-                ret += "<Samples>";
+                sb.Append("<?xml version =\"1.0\"?>");
+
+                sb.Append("<Samples>");
                 try
                 {
                     
@@ -967,24 +987,24 @@ namespace WetLib
                     // Compongo la risposta
                     for (int ii = 0; ii < profile.Length; ii++)
                     {
-                        ret += "<Sample id=\"" + profile[ii].timestamp.Ticks.ToString() + "\">";
-                        ret += "<TimeStamp>" + profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</TimeStamp>" +
+                        sb.Append("<Sample id=\"" + profile[ii].timestamp.Ticks.ToString() + "\">");
+                        sb.Append("<TimeStamp>" + profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</TimeStamp>" +
                             "<HiValue>" + profile[ii].hi_value.ToString().Replace(',', '.') + "</HiValue>" +
                             "<AvgValue>" + profile[ii].avg_value.ToString().Replace(',', '.') + "</AvgValue>" +
-                            "<LoValue>" + profile[ii].lo_value.ToString().Replace(',', '.') + "</LoValue>";
-                        ret += "</Sample>";
+                            "<LoValue>" + profile[ii].lo_value.ToString().Replace(',', '.') + "</LoValue>");
+                        sb.Append("</Sample>");
                     }
                 }
                 catch (Exception ex)
                 {
                     WetDebug.GestException(ex);
                 }
-                ret += "</Samples>";
+                sb.Append("</Samples>");
 
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -997,8 +1017,9 @@ namespace WetLib
             {
                 int id = 0;
                 DateTime dt = new DateTime();
+                StringBuilder sb = new StringBuilder();
 
-                string ret = "TIMESTAMP;LO_VALUE;AVERAGE;HI_VALUE;" + Environment.NewLine;
+                sb.Append("TIMESTAMP;LO_VALUE;AVERAGE;HI_VALUE;" + Environment.NewLine);
                 try
                 {
 
@@ -1012,10 +1033,10 @@ namespace WetLib
                     // Compongo la risposta
                     for (int ii = 0; ii < profile.Length; ii++)
                     {
-                        ret += profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + ";" +
+                        sb.Append(profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + ";" +
                             profile[ii].lo_value.ToString().Replace(',', '.') + ";" +
                             profile[ii].avg_value.ToString().Replace(',', '.') + ";" +
-                            profile[ii].hi_value.ToString().Replace(',', '.') + ";" + Environment.NewLine;
+                            profile[ii].hi_value.ToString().Replace(',', '.') + ";" + Environment.NewLine);
                     }
                 }
                 catch (Exception ex)
@@ -1027,7 +1048,7 @@ namespace WetLib
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.Headers["Content-Disposition"] = "attachment; filename=" + id.ToString() + "_" + dt.ToString("yyyyMMdd") + "_DayTrend.csv";
                 context.ContentType = "application/octet-stream";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -1038,9 +1059,11 @@ namespace WetLib
             /// <returns>Vettore con i campioni giornalieri</returns>
             public Stream GetDayTrendEx(string id_district, string date)
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
 
-                ret += "<Samples>";
+                sb.Append("<?xml version =\"1.0\"?>");
+
+                sb.Append("<Samples>");
                 try
                 {
 
@@ -1054,24 +1077,24 @@ namespace WetLib
                     // Compongo la risposta
                     for (int ii = 0; ii < profile.Length; ii++)
                     {
-                        ret += "<Sample id=\"" + profile[ii].timestamp.Ticks.ToString() + "\">";
-                        ret += "<TimeStamp>" + profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</TimeStamp>" +
+                        sb.Append("<Sample id=\"" + profile[ii].timestamp.Ticks.ToString() + "\">");
+                        sb.Append("<TimeStamp>" + profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</TimeStamp>" +
                             "<HiValue>" + profile[ii].hi_value.ToString().Replace(',', '.') + "</HiValue>" +
                             "<AvgValue>" + profile[ii].avg_value.ToString().Replace(',', '.') + "</AvgValue>" +
-                            "<LoValue>" + profile[ii].lo_value.ToString().Replace(',', '.') + "</LoValue>";
-                        ret += "</Sample>";
+                            "<LoValue>" + profile[ii].lo_value.ToString().Replace(',', '.') + "</LoValue>");
+                        sb.Append("</Sample>");
                     }
                 }
                 catch (Exception ex)
                 {
                     WetDebug.GestException(ex);
                 }
-                ret += "</Samples>";
+                sb.Append("</Samples>");
 
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -1084,8 +1107,9 @@ namespace WetLib
             {
                 int id = 0;
                 DateTime dt = new DateTime();
+                StringBuilder sb = new StringBuilder();
 
-                string ret = "TIMESTAMP;LO_VALUE;AVERAGE;HI_VALUE;" + Environment.NewLine;
+                sb.Append("TIMESTAMP;LO_VALUE;AVERAGE;HI_VALUE;" + Environment.NewLine);
                 try
                 {
 
@@ -1099,10 +1123,10 @@ namespace WetLib
                     // Compongo la risposta
                     for (int ii = 0; ii < profile.Length; ii++)
                     {
-                        ret += profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + ";" +
+                        sb.Append(profile[ii].timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + ";" +
                             profile[ii].lo_value.ToString().Replace(',', '.') + ";" +
                             profile[ii].avg_value.ToString().Replace(',', '.') + ";" +
-                            profile[ii].hi_value.ToString().Replace(',', '.') + ";" + Environment.NewLine;
+                            profile[ii].hi_value.ToString().Replace(',', '.') + ";" + Environment.NewLine);
                     }
                 }
                 catch (Exception ex)
@@ -1114,7 +1138,7 @@ namespace WetLib
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.Headers["Content-Disposition"] = "attachment; filename=" + id.ToString() + "_" + dt.ToString("yyyyMMdd") + "_DayTrend.csv";
                 context.ContentType = "application/octet-stream";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -1123,7 +1147,9 @@ namespace WetLib
             /// <returns>Vettori</returns>
             public Stream GetDayTrends()
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append("<?xml version =\"1.0\"?>");
 
                 try
                 {
@@ -1137,7 +1163,7 @@ namespace WetLib
 
                     if (districts.Rows.Count > 0)
                     {
-                        ret += "<Records>";
+                        sb.Append("<Records>");
                         // Ciclo per tutte le entità
                         foreach (DataRow district in districts.Rows)
                         {
@@ -1160,34 +1186,34 @@ namespace WetLib
                                 int interpolation_time_minutes = WetConfig.GetInterpolationTimeMinutes();
                                 int samples_in_day = (int)(24 * 60 / WetConfig.GetInterpolationTimeMinutes());
                                 DateTime day = DateTime.Now.Date;
-                                ret += "<Record id_gis=\"" + id_gis.ToString() + "\"><Days>";
+                                sb.Append("<Record id_gis=\"" + id_gis.ToString() + "\"><Days>");
                                 for (int ii = 0; ii < 7; ii++)
                                 {
                                     day = day.AddDays(1.0d);
-                                    ret += "<Day day=\"" + day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "\" day_of_week=\"" + day.DayOfWeek.ToString() + "\">";
+                                    sb.Append("<Day day=\"" + day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "\" day_of_week=\"" + day.DayOfWeek.ToString() + "\">");
                                     DayTrendSample[] dts = WetUtility.GetDayTrendEx(id_district, day, samples_in_day, 8);
-                                    ret += "<Profile>";
+                                    sb.Append("<Profile>");
                                     foreach (DayTrendSample dt in dts)
                                     {
-                                        ret += "<Timestamp>" + dt.timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</Timestamp>";
-                                        ret += "<LowValue>" + dt.lo_value.ToString("F2") + "</LowValue>";
-                                        ret += "<AvgValue>" + dt.avg_value.ToString("F2") + "</AvgValue>";
-                                        ret += "<HighValue>" + dt.hi_value.ToString("F2") + "</HighValue>";
+                                        sb.Append("<Timestamp>" + dt.timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</Timestamp>");
+                                        sb.Append("<LowValue>" + dt.lo_value.ToString("F2") + "</LowValue>");
+                                        sb.Append("<AvgValue>" + dt.avg_value.ToString("F2") + "</AvgValue>");
+                                        sb.Append("<HighValue>" + dt.hi_value.ToString("F2") + "</HighValue>");
                                     }
-                                    ret += "</Profile>";
-                                    ret += "</Day>";
+                                    sb.Append("</Profile>");
+                                    sb.Append("</Day>");
                                 }
-                                ret += "</Days></Record>";
+                                sb.Append("</Days></Record>");
                             }
                             catch (Exception ex0)
                             {
                                 WetDebug.GestException(ex0);
                             }
                         }
-                        ret += "</Records>";
+                        sb.Append("</Records>");
                     }
                     else
-                        ret += "<Error>No entities founds!</Error>";
+                        sb.Append("<Error>No entities founds!</Error>");
                 }
                 catch (Exception ex)
                 {
@@ -1197,7 +1223,7 @@ namespace WetLib
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             /// <summary>
@@ -1208,7 +1234,9 @@ namespace WetLib
             /// <returns>Vettori</returns>
             public Stream GetDayTrendsByIdGis(string id_gis, string start_date)
             {
-                string ret = "<?xml version =\"1.0\"?>";
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append("<?xml version =\"1.0\"?>");
 
                 try
                 {
@@ -1228,24 +1256,24 @@ namespace WetLib
                             int interpolation_time_minutes = WetConfig.GetInterpolationTimeMinutes();
                             int samples_in_day = (int)(24 * 60 / WetConfig.GetInterpolationTimeMinutes());
                             DateTime day = Convert.ToDateTime(start_date);
-                            ret += "<Days>";
+                            sb.Append("<Days>");
                             for (int ii = 0; ii < 7; ii++)
                             {
                                 day = day.AddDays(1.0d);
-                                ret += "<Day day=\"" + day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "\" day_of_week=\"" + day.DayOfWeek.ToString() + "\">";
+                                sb.Append("<Day day=\"" + day.ToString(WetDBConn.MYSQL_DATE_FORMAT) + "\" day_of_week=\"" + day.DayOfWeek.ToString() + "\">");
                                 DayTrendSample[] dts = WetUtility.GetDayTrendEx(id_district, day, samples_in_day, 8);
-                                ret += "<Profile>";
+                                sb.Append("<Profile>");
                                 foreach (DayTrendSample dt in dts)
                                 {
-                                    ret += "<Timestamp>" + dt.timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</Timestamp>";
-                                    ret += "<LowValue>" + dt.lo_value.ToString("F2") + "</LowValue>";
-                                    ret += "<AvgValue>" + dt.avg_value.ToString("F2") + "</AvgValue>";
-                                    ret += "<HighValue>" + dt.hi_value.ToString("F2") + "</HighValue>";
+                                    sb.Append("<Timestamp>" + dt.timestamp.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "</Timestamp>");
+                                    sb.Append("<LowValue>" + dt.lo_value.ToString("F2") + "</LowValue>");
+                                    sb.Append("<AvgValue>" + dt.avg_value.ToString("F2") + "</AvgValue>");
+                                    sb.Append("<HighValue>" + dt.hi_value.ToString("F2") + "</HighValue>");
                                 }
-                                ret += "</Profile>";
-                                ret += "</Day>";
+                                sb.Append("</Profile>");
+                                sb.Append("</Day>");
                             }
-                            ret += "</Days>";
+                            sb.Append("</Days>");
                         }
                         catch (Exception ex0)
                         {
@@ -1253,7 +1281,7 @@ namespace WetLib
                         }
                     }
                     else
-                        ret += "<Error>No entities founds!</Error>";
+                        sb.Append("<Error>No entities founds!</Error>");
                 }
                 catch (Exception ex)
                 {
@@ -1263,7 +1291,7 @@ namespace WetLib
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
                 context.ContentType = "text/plain";
-                return new MemoryStream(Encoding.Default.GetBytes(ret));
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
             }
 
             #endregion

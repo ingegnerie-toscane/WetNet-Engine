@@ -134,6 +134,7 @@ namespace WetLib
             // Processo la statistica sui distretti
             DistrictsStatistic();
             // Controllo correlazioni
+            /*
             if ((DateTime.Now - last_correlation).TotalHours > CORRELATION_CHECK_HOURS)
             {
                 Task.Run(() =>
@@ -142,6 +143,7 @@ namespace WetLib
                     MeasuresCorrelations();
                 }, ct_correlation.Token);
             }
+            */
             // Aggiorno cold_start_counter
             if (WetEngine.cold_start_counter == 3)
                 WetEngine.cold_start_counter++;

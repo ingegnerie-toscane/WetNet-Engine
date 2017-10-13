@@ -367,7 +367,7 @@ namespace WetLib
                 }
                 catch (Exception ex)
                 {
-                    WetDebug.GestException(ex, query);
+                    WetDebug.GestException(ex, query + Environment.NewLine + "Connessione: " + conn.ConnectionString);
                 }
                 finally
                 {
@@ -395,17 +395,19 @@ namespace WetLib
                     conn.Open();
                     using (OdbcCommand cmd = new OdbcCommand(command, conn))
                     {
+                        cmd.CommandTimeout = 360;
                         ret = cmd.ExecuteNonQuery();
                     }
                 }
                 catch (Exception ex)
                 {
-                    WetDebug.GestException(ex);
+                    WetDebug.GestException(ex, command + Environment.NewLine + "Connessione: " + conn.ConnectionString);
                 }
                 finally
                 {
                     if (conn != null)
                         conn.Close();
+                    Thread.Sleep(1000);
                 }
             }
 
@@ -454,17 +456,18 @@ namespace WetLib
                     int n_row = (source_table.Rows.Count - base_row) > MAX_INSERT_RECORDS ? MAX_INSERT_RECORDS : (source_table.Rows.Count - base_row);
 
                     // Compilo la query
-                    string cmd = "INSERT INTO " + dest_table + " (";
+                    StringBuilder sb = new StringBuilder();
+                    sb.Append("INSERT INTO " + dest_table + " (");
                     for (int ii = 0; ii < source_table.Columns.Count; ii++)
                     {
-                        cmd += source_table.Columns[ii].ColumnName;
+                        sb.Append(source_table.Columns[ii].ColumnName);
                         if (ii < (source_table.Columns.Count - 1))
-                            cmd += ", ";
+                            sb.Append(", ");
                     }
-                    cmd += ") VALUES ";
+                    sb.Append(") VALUES ");
                     for (int ii = base_row; ii < (base_row + n_row); ii++)
                     {
-                        cmd += "(";
+                        sb.Append("(");
                         for (int jj = 0; jj < source_table.Columns.Count; jj++)
                         {
                             string val_str;
@@ -517,30 +520,30 @@ namespace WetLib
 
                             // Aggiungo il valore al comando
                             if (val_str == null)
-                                cmd += "NULL";
+                                sb.Append("NULL");
                             else
-                                cmd += val_str;
+                                sb.Append(val_str);
 
                             // Aggiungo la virgola se non sono a fine lista
                             if (jj < (source_table.Columns.Count - 1))
-                                cmd += ",";
+                                sb.Append(",");
                         }
-                        cmd += ")";
+                        sb.Append(")");
                         if (ii < (base_row + n_row - 1))
-                            cmd += ", ";
+                            sb.Append(", ");
                     }
 
-                    cmd += " ON DUPLICATE KEY UPDATE ";
+                    sb.Append(" ON DUPLICATE KEY UPDATE ");
 
                     for (int ii = 0; ii < source_table.Columns.Count; ii++)
                     {
-                        cmd += source_table.Columns[ii].ColumnName + "=VALUES(" + source_table.Columns[ii].ColumnName + ")";
+                        sb.Append(source_table.Columns[ii].ColumnName + "=VALUES(" + source_table.Columns[ii].ColumnName + ")");
                         if (ii < source_table.Columns.Count - 1)
-                            cmd += ",";
+                            sb.Append(",");
                     }
 
                     // Eseguo il comando
-                    insert_count += ExecCustomCommand(cmd);
+                    insert_count += ExecCustomCommand(sb.ToString());
 
                     // passo il controllo al S.O.
                     Thread.Sleep(100);

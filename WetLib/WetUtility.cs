@@ -32,6 +32,7 @@ using System.Threading.Tasks;
 using System.Data;
 using System.Diagnostics;
 using System.Reflection;
+using System.Net;
 
 namespace WetLib
 {

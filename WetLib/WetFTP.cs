@@ -152,7 +152,7 @@ namespace WetLib
                     fld = fld.Insert(0, "/");
             }
             // Creo l'istanza
-            ftp = (FtpWebRequest)WebRequest.Create("ftp://" + server + ":" + port + fld);
+            ftp = (FtpWebRequest)WebRequest.Create("ftp://" + server + ":" + port + fld);            
             ftp.Credentials = new NetworkCredential(username, password);
             ftp.EnableSsl = use_ssl;
             ftp.UsePassive = passive;
@@ -172,7 +172,7 @@ namespace WetLib
         {
             string ret;
 
-            FtpWebRequest ftp = FTPAPI_Initialize(base_folder);
+            FtpWebRequest ftp = FTPAPI_Initialize(base_folder);            
             ftp.Method = method;
             using (FtpWebResponse resp = (FtpWebResponse)ftp.GetResponse())
             {
