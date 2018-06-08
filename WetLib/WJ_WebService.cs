@@ -1329,9 +1329,12 @@ namespace WetLib
             {
                 WetConfig wcfg = new WetConfig();
                 cfg = wcfg.GetWJ_Webservice_Config();
-                host = new WebServiceHost(typeof(WService), new Uri("http://localhost:" + cfg.port.ToString() + "/"));
-                sep = host.AddServiceEndpoint(typeof(IWService), new WebHttpBinding(), "");
-                host.Open();
+                if (cfg.port != 0)
+                {
+                    host = new WebServiceHost(typeof(WService), new Uri("http://localhost:" + cfg.port.ToString() + "/"));
+                    sep = host.AddServiceEndpoint(typeof(IWService), new WebHttpBinding(), "");
+                    host.Open();
+                }
             }
             catch (Exception ex)
             {

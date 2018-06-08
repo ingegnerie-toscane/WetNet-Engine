@@ -368,7 +368,7 @@ namespace WetLib
                         if (tmp.Rows.Count == 1)
                         {
                             new_row[0] = Convert.ToDateTime(tmp.Rows[0][0]);
-                            new_row[1] = Convert.ToDouble(tmp.Rows[0][1]);
+                            new_row[1] = (Convert.ToDouble(tmp.Rows[0][1]) - fixed_value) / multiplication_factor;
                         }
                         else
                         {

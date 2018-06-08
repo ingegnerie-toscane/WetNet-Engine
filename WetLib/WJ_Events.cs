@@ -296,6 +296,25 @@ namespace WetLib
                         // Acquisisco le soglie di invio segnalazione su evento
                         double min_detectable_loss = Convert.ToDouble(district["min_detectable_loss"]);
                         double min_detectable_rank = Convert.ToDouble(district["min_detectable_rank"]);
+
+                        // Acquisisco l'ultimo campione letto sui profili
+                        DataTable last_profile_val = wet_db.ExecCustomQuery("SELECT * FROM data_districts WHERE `districts_id_districts` = " + id_district + " ORDER BY `timestamp` DESC LIMIT 1");
+                        DateTime last_profile_dt = DateTime.MinValue;
+                        if (last_profile_val.Rows.Count == 1)
+                            last_profile_dt = Convert.ToDateTime(last_profile_val.Rows[0]["timestamp"]);
+                        // Acquisisco l'ultimo campione scritto sulle statistiche
+                        DataTable last_statistic_val = wet_db.ExecCustomQuery("SELECT * FROM districts_day_statistic WHERE `districts_id_districts` = " + id_district + " ORDER BY `day` DESC LIMIT 1");
+                        DateTime last_statistic_dt = DateTime.MinValue;
+                        if (last_statistic_val.Rows.Count == 1)
+                            last_statistic_dt = Convert.ToDateTime(last_statistic_val.Rows[0]["day"]);
+                        // Controllo se sono in ricostruzione
+                        TimeSpan diff_date = last_statistic_dt.Date.Subtract(last_statistic_dt.Date);
+                        if ((diff_date.Days > 1) || (last_profile_dt == DateTime.MinValue) || (last_statistic_dt == DateTime.MinValue))
+                        {
+                            // Sono in costruzione, non gestisco gli eventi
+                            continue;
+                        }
+
                         // Acquisisco l'ultimo evento registrato
                         Event last_registered_event = ReadLastEvent(id_district);
                         if ((critical) && (last_registered_event.day != DateTime.MinValue.Date))
@@ -333,7 +352,7 @@ namespace WetLib
                             // Imposto il giorno in analisi
                             DateTime actual = DateTime.Now.Subtract(new TimeSpan(days, 0, 0, 0)).Date;
 
-                            #region Gestione distretto fuori controllo
+                            #region Gestione distretto fuori controllo                            
 
                             // Acquisisco il record statistico per il giorno corrente
                             bool no_valid_daily_statistic_record = false;
@@ -367,7 +386,7 @@ namespace WetLib
                                     if ((tmp_dt.Rows[0][measure_name] == DBNull.Value) || (tmp_dt.Rows[0]["avg_day"] == DBNull.Value))
                                         no_valid_daily_statistic_record = true;
                                 }
-                            }
+                            }                                
 
                             if (days > 0)
                             {
@@ -441,7 +460,7 @@ namespace WetLib
                                     // Controllo che non sia già presente un evento uguale per il giorno corrente
                                     Event[] actual_day_events;
                                     ReadActualEvent(id_district, actual, out actual_day_events);
-                                    bool can_write = !actual_day_events.Any();
+                                    bool can_write = !actual_day_events.Any();                                   
                                     // Scrivo l'evento
                                     if (can_write)
                                     {

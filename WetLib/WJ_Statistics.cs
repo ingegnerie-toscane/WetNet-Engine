@@ -313,11 +313,24 @@ namespace WetLib
                             continue;
                         // Controllo se ho almeno un campione per il giorno corrente, altrimenti esco
                         DataTable last_samples = wet_db.ExecCustomQuery("SELECT * FROM data_measures WHERE `measures_id_measures` = " + id_measure.ToString() + " AND `timestamp` >= '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' ORDER BY `timestamp` LIMIT 1");
-                        if (last_samples.Rows.Count == 0)
-                            continue;
+                        //if (last_samples.Rows.Count == 0)
+                        //    continue;
                         // Controllo il numero di giorni da campionare
                         first_day = first_day.AddDays(1.0d);
-                        DataTable days_table = wet_db.ExecCustomQuery("SELECT DISTINCT DATE(`timestamp`) AS `date` FROM data_measures WHERE `timestamp` > '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` < '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND measures_id_measures = " + id_measure + " ORDER BY `date` ASC");
+                        DataTable days_table;
+                        if (last_samples.Rows.Count == 1)
+                            days_table = wet_db.ExecCustomQuery("SELECT DISTINCT DATE(`timestamp`) AS `date` FROM data_measures WHERE `timestamp` > '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` < '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND measures_id_measures = " + id_measure + " ORDER BY `date` ASC");
+                        else
+                        {
+                            DataTable last_val = wet_db.ExecCustomQuery("SELECT * FROM data_measures WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `timestamp` DESC LIMIT 1");
+                            if (last_val.Rows.Count == 1)
+                            {
+                                DateTime last_day_val = Convert.ToDateTime(last_val.Rows[0]["timestamp"]).Date;
+                                days_table = wet_db.ExecCustomQuery("SELECT DISTINCT DATE(`timestamp`) AS `date` FROM data_measures WHERE `timestamp` > '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` < '" + last_day_val.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND measures_id_measures = " + id_measure + " ORDER BY `date` ASC");
+                            }
+                            else
+                                continue;
+                        }
                         for (int ii = 0; ii < days_table.Rows.Count; ii++)
                         {
                             // Giorno da analizzare
@@ -621,8 +634,8 @@ namespace WetLib
                             continue;
                         // Controllo se ho almeno un campione per il giorno corrente, altrimenti esco
                         DataTable last_samples = wet_db.ExecCustomQuery("SELECT * FROM data_districts WHERE `districts_id_districts` = " + id_district.ToString() + " AND `timestamp` >= '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' ORDER BY `timestamp` LIMIT 1");
-                        if (last_samples.Rows.Count == 0)
-                            continue;
+                        //if (last_samples.Rows.Count == 0)
+                        //    continue;
                         // Controllo se ci sono delle pressioni che siano aggiornate
                         DataTable pressure = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND measures.type = 1");
                         bool pressure_statistics_presence = true;
@@ -644,7 +657,20 @@ namespace WetLib
                         }
                         // Controllo il numero di giorni da campionare
                         first_day = first_day.AddDays(1.0d);
-                        DataTable days_table = wet_db.ExecCustomQuery("SELECT DISTINCT DATE(`timestamp`) AS `date` FROM data_districts WHERE `timestamp` > '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` < '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND districts_id_districts = " + id_district + " ORDER BY `date` ASC");
+                        DataTable days_table;
+                        if (last_samples.Rows.Count == 1)
+                            days_table = wet_db.ExecCustomQuery("SELECT DISTINCT DATE(`timestamp`) AS `date` FROM data_districts WHERE `timestamp` > '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` < '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND districts_id_districts = " + id_district + " ORDER BY `date` ASC");
+                        else
+                        {
+                            DataTable last_val = wet_db.ExecCustomQuery("SELECT * FROM data_districts WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `timestamp` DESC LIMIT 1");
+                            if (last_val.Rows.Count == 1)
+                            {
+                                DateTime last_day_val = Convert.ToDateTime(last_val.Rows[0]["timestamp"]).Date;
+                                days_table = wet_db.ExecCustomQuery("SELECT DISTINCT DATE(`timestamp`) AS `date` FROM data_districts WHERE `timestamp` > '" + first_day.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` < '" + last_day_val.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND districts_id_districts = " + id_district + " ORDER BY `date` ASC");
+                            }
+                            else
+                                continue;
+                        }
                         for (int ii = 0; ii < days_table.Rows.Count; ii++)
                         {
                             // Giorno da analizzare

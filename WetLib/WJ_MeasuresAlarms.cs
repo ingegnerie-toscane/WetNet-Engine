@@ -312,7 +312,7 @@ namespace WetLib
                                         }
                                     }
                                 }
-                                else if ((alarm_cc_enable) && (hyst != 0))
+                                if ((alarm_cc_enable) && (hyst != 0))
                                 {
                                     // Valore assoluto
                                     double hyst_val = Math.Abs(hyst);

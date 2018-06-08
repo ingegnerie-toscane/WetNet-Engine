@@ -152,11 +152,13 @@ namespace WetLib
                     fld = fld.Insert(0, "/");
             }
             // Creo l'istanza
-            ftp = (FtpWebRequest)WebRequest.Create("ftp://" + server + ":" + port + fld);            
+            ftp = (FtpWebRequest)WebRequest.Create("ftp://" + server + ":" + port + fld);
+            ftp.Proxy = WebRequest.GetSystemWebProxy();
             ftp.Credentials = new NetworkCredential(username, password);
             ftp.EnableSsl = use_ssl;
             ftp.UsePassive = passive;
             ftp.UseBinary = true;
+            ftp.Timeout = 12000;
             // Cambio l'uri corrente, non inizializzo per non creare una race-condition
             current_uri = ftp.RequestUri.AbsoluteUri;
 
