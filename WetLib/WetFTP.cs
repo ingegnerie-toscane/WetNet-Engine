@@ -153,12 +153,11 @@ namespace WetLib
             }
             // Creo l'istanza
             ftp = (FtpWebRequest)WebRequest.Create("ftp://" + server + ":" + port + fld);
-            ftp.Proxy = WebRequest.GetSystemWebProxy();
             ftp.Credentials = new NetworkCredential(username, password);
             ftp.EnableSsl = use_ssl;
             ftp.UsePassive = passive;
             ftp.UseBinary = true;
-            ftp.Timeout = 12000;
+            ftp.Timeout = 16000;
             // Cambio l'uri corrente, non inizializzo per non creare una race-condition
             current_uri = ftp.RequestUri.AbsoluteUri;
 
@@ -292,12 +291,14 @@ namespace WetLib
                 string[] sub_nodes = ListSubFolders(basenode);
                 for (int ii = 0; ii < sub_nodes.Length; ii++)
                 {
-                    if ((sub_nodes[ii] != ".") && (sub_nodes[ii] != ".."))
+                    if ((sub_nodes[ii] != ".") && (sub_nodes[ii] != "..") && (sub_nodes[ii] != "System Volume Information"))
                     {
                         sub_nodes[ii] = base_node + "/" + sub_nodes[ii];
                         nodes.Add(sub_nodes[ii]);
                         nodes.AddRange(GetFolderTree(sub_nodes[ii]));
                     }
+                    else
+                        nodes.Remove(basenode);
                 }
             }
 
