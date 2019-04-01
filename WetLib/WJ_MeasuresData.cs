@@ -495,6 +495,7 @@ namespace WetLib
                     break;
 
                 case WetDBConn.ProviderType.IFIX_SQL:
+                    /*** Deprecato iFIX, sostituito con query SQL standard
                     query = "SELECT ";
                     if (num_records > 0)
                         query += "TOP " + num_records.ToString() + " ";
@@ -504,6 +505,38 @@ namespace WetLib
                         " AND quality = 100 AND timestamp > ''" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
                         "'' AND timestamp <= ''" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'' AND samplingmode = LAB ORDER BY " +
                         measure_coord.timestamp_column + (order == WetDBConn.OrderTypes.ASC ? " ASC" : " DESC") + "')";
+                    ***/
+                    query = "SELECT ";
+                    if (num_records > 0)
+                        query += "TOP " + num_records.ToString() + " ";
+                    query += "[" + measure_coord.timestamp_column + "], [" + measure_coord.value_column + "] FROM " + measure_coord.table_name +
+                        " WHERE ";
+                    if (measure_coord.relational_id_column != string.Empty)
+                    {
+                        query += "[" + measure_coord.relational_id_column + "] = ";
+                        switch (measure_coord.relational_id_type)
+                        {
+                            case WetDBConn.PrimaryKeyColumnTypes.REAL:
+                                query += measure_coord.relational_id_value.Replace(',', '.');
+                                break;
+
+                            case WetDBConn.PrimaryKeyColumnTypes.DATETIME:
+                                query += "'" + Convert.ToDateTime(measure_coord.relational_id_value).ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'";
+                                break;
+
+                            case WetDBConn.PrimaryKeyColumnTypes.TEXT:
+                                query += "'" + measure_coord.relational_id_value + "'";
+                                break;
+
+                            default:
+                                query += measure_coord.relational_id_value;
+                                break;
+                        }
+                        query += " AND ";
+                    }
+                    query += "[" + measure_coord.timestamp_column + "] > '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
+                                "' AND [" + measure_coord.timestamp_column + "] <= '" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'" +
+                        " ORDER BY [" + measure_coord.timestamp_column + "] " + (order == WetDBConn.OrderTypes.ASC ? "ASC" : "DESC");
                     break;
 
                 case WetDBConn.ProviderType.EXCEL:
