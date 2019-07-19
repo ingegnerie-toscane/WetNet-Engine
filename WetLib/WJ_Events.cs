@@ -1408,7 +1408,7 @@ namespace WetLib
                                     if (mail_address != null)
                                     {
                                         if (mail_address != string.Empty)
-                                        {
+                                        {                                            
                                             // Compongo la mail
                                             SmtpClient smtp_client = new SmtpClient();
                                             smtp_client.Host = cfg.smtp_server;
@@ -1416,7 +1416,10 @@ namespace WetLib
                                             smtp_client.EnableSsl = cfg.smtp_use_ssl;
                                             smtp_client.Credentials = new NetworkCredential(cfg.smtp_username, cfg.smtp_password);
                                             MailMessage msg = new MailMessage();
-                                            msg.From = new MailAddress(cfg.smtp_username);
+                                            string from_str = cfg.smtp_username;
+                                            if (!from_str.Contains("@"))
+                                                from_str += "@wetnet.net";
+                                            msg.From = new MailAddress(from_str);
                                             msg.To.Add(mail_address);
                                             msg.Subject = "WetNet event report";
                                             msg.Body = mail_msg;
