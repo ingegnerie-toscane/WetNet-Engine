@@ -187,16 +187,30 @@ namespace WetLib
                                     // Leggo l'ultimo giorno scritto sulle statistiche mensili e annuali
                                     DateTime update_timestamp = Convert.ToDateTime(measure["update_timestamp"]);
                                     DateTime first_month = update_timestamp.Date;
+                                    first_month = new DateTime(first_month.Year, first_month.Month, 1);
                                     DateTime first_year = update_timestamp.Date;
+                                    first_year = new DateTime(first_year.Year, 1, 1);
                                     DataTable first_month_table = wet_db.ExecCustomQuery("SELECT * FROM measures_month_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `month` DESC LIMIT 1");
                                     if (first_month_table.Rows.Count == 1)
-                                        first_month = Convert.ToDateTime(first_month_table.Rows[0]["month"]).Date.AddMonths(1);
+                                    {
+                                        DateTime last_val;
+
+                                        last_val = Convert.ToDateTime(first_month_table.Rows[0]["month"]).Date;
+                                        last_val = new DateTime(last_val.Year, last_val.Month, 1);
+                                        first_month = last_val.AddMonths(1);
+                                    }
                                     DataTable first_year_table = wet_db.ExecCustomQuery("SELECT * FROM measures_year_statistic WHERE `measures_id_measures` = " + id_measure.ToString() + " ORDER BY `year` DESC LIMIT 1");
                                     if (first_year_table.Rows.Count == 1)
-                                        first_year = Convert.ToDateTime(first_year_table.Rows[0]["year"]).Date.AddYears(1);
+                                    {
+                                        DateTime last_val;
+
+                                        last_val = Convert.ToDateTime(first_year_table.Rows[0]["year"]).Date;
+                                        last_val = new DateTime(last_val.Year, 1, 1);
+                                        first_year = last_val.AddYears(1);
+                                    }
                                     // Calcolo mese e anno precedenti
-                                    DateTime prec_month = DateTime.Now.Date.AddMonths(-1);
-                                    DateTime prec_year = DateTime.Now.Date.AddYears(-1);
+                                    //DateTime prec_month = DateTime.Now.Date.AddMonths(-1);
+                                    //DateTime prec_year = DateTime.Now.Date.AddYears(-1);
 
                                     #region Calcolo mensile
 
@@ -313,8 +327,8 @@ namespace WetLib
                             continue;
                         // Controllo se ho almeno un campione per il giorno corrente, altrimenti esco
                         DataTable last_samples = wet_db.ExecCustomQuery("SELECT * FROM data_measures WHERE `measures_id_measures` = " + id_measure.ToString() + " AND `timestamp` >= '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' ORDER BY `timestamp` LIMIT 1");
-                        //if (last_samples.Rows.Count == 0)
-                        //    continue;
+                        if (last_samples.Rows.Count == 0)
+                            continue;
                         // Controllo il numero di giorni da campionare
                         first_day = first_day.AddDays(1.0d);
                         DataTable days_table;
@@ -508,16 +522,30 @@ namespace WetLib
                                     // Leggo l'ultimo giorno scritto sulle statistiche mensili e annuali
                                     DateTime update_timestamp = Convert.ToDateTime(district["update_timestamp"]);
                                     DateTime first_month = update_timestamp.Date;
+                                    first_month = new DateTime(first_month.Year, first_month.Month, 1);
                                     DateTime first_year = update_timestamp.Date;
+                                    first_year = new DateTime(first_year.Year, 1, 1);
                                     DataTable first_month_table = wet_db.ExecCustomQuery("SELECT * FROM districts_month_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `month` DESC LIMIT 1");
                                     if (first_month_table.Rows.Count == 1)
-                                        first_month = Convert.ToDateTime(first_month_table.Rows[0]["month"]).Date.AddMonths(1);
+                                    {
+                                        DateTime last_val;
+
+                                        last_val = Convert.ToDateTime(first_month_table.Rows[0]["month"]).Date;
+                                        last_val = new DateTime(last_val.Year, last_val.Month, 1);
+                                        first_month = last_val.AddMonths(1);
+                                    }
                                     DataTable first_year_table = wet_db.ExecCustomQuery("SELECT * FROM districts_year_statistic WHERE `districts_id_districts` = " + id_district.ToString() + " ORDER BY `year` DESC LIMIT 1");
                                     if (first_year_table.Rows.Count == 1)
-                                        first_year = Convert.ToDateTime(first_year_table.Rows[0]["year"]).Date.AddYears(1);
+                                    {
+                                        DateTime last_val;
+                                        
+                                        last_val = Convert.ToDateTime(first_year_table.Rows[0]["year"]).Date;
+                                        last_val = new DateTime(last_val.Year, 1, 1);
+                                        first_year = last_val.AddYears(1);
+                                    }
                                     // Calcolo mese e anno precedenti
-                                    DateTime prec_month = DateTime.Now.Date.AddMonths(-1);
-                                    DateTime prec_year = DateTime.Now.Date.AddYears(-1);
+                                    //DateTime prec_month = DateTime.Now.Date.AddMonths(-1);
+                                    //DateTime prec_year = DateTime.Now.Date.AddYears(-1);
 
                                     #region Calcolo mensile
 
@@ -634,8 +662,8 @@ namespace WetLib
                             continue;
                         // Controllo se ho almeno un campione per il giorno corrente, altrimenti esco
                         DataTable last_samples = wet_db.ExecCustomQuery("SELECT * FROM data_districts WHERE `districts_id_districts` = " + id_district.ToString() + " AND `timestamp` >= '" + DateTime.Now.Date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' ORDER BY `timestamp` LIMIT 1");
-                        //if (last_samples.Rows.Count == 0)
-                        //    continue;
+                        if (last_samples.Rows.Count == 0)
+                            continue;
                         // Controllo se ci sono delle pressioni che siano aggiornate
                         DataTable pressure = wet_db.ExecCustomQuery("SELECT `measures_id_measures`, `type`, `districts_id_districts`, `sign` FROM measures_has_districts INNER JOIN measures ON measures_has_districts.measures_id_measures = measures.id_measures WHERE `districts_id_districts` = " + id_district.ToString() + " AND measures.type = 1");
                         bool pressure_statistics_presence = true;

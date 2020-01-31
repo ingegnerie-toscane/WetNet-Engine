@@ -369,8 +369,12 @@ namespace WetLib
                 wet_db.ExecCustomCommand("DELETE FROM districts_statistic_profiles WHERE districts_id_districts = " + id_district.ToString());
                 // Elimino gli eventi
                 wet_db.ExecCustomCommand("DELETE FROM districts_events WHERE districts_id_districts = " + id_district.ToString());
-                // Elimino le statistiche
+                // Elimino le statistiche giornaliere
                 wet_db.ExecCustomCommand("DELETE FROM districts_day_statistic WHERE districts_id_districts = " + id_district.ToString());
+                // Elimino le statistiche mensili
+                wet_db.ExecCustomCommand("DELETE FROM districts_month_statistic WHERE districts_id_districts = " + id_district.ToString());
+                // Elimino le statistiche annuali
+                wet_db.ExecCustomCommand("DELETE FROM districts_year_statistic WHERE districts_id_districts = " + id_district.ToString());
             }
             catch (Exception ex)
             {
