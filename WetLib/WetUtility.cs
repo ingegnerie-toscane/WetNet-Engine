@@ -64,6 +64,67 @@ namespace WetLib
         public double lo_value;
     }
 
+    /// <summary>
+    /// Struttura di un record mensile M1
+    /// </summary>
+    struct PI_M1_Month_Struct
+    {
+        /// <summary>
+        /// Mese di analisi
+        /// </summary>
+        public DateTime month;
+
+        /// <summary>
+        /// Numero di giorni nel mese
+        /// </summary>
+        public int days_in_month;
+
+        /// <summary>
+        /// Giorni nell'anno trascorsi
+        /// </summary>
+        public int days_in_year;
+
+        /// <summary>
+        /// Media del mese corrente
+        /// </summary>
+        public double avg_month;
+
+        /// <summary>
+        /// Media dei giorni trascorsi da inizio anno
+        /// </summary>
+        public double avg_days_in_year;
+
+        /// <summary>
+        /// Volume mese corrente
+        /// </summary>
+        public double vol_month;
+
+        /// <summary>
+        /// Volume totale cumulato da inizio anno
+        /// </summary>
+        public double vol_tot;
+
+        /// <summary>
+        /// M1a calcolato da inizio anno
+        /// </summary>
+        public double m1a_tot;
+
+        /// <summary>
+        /// M1b calcolato da inizio anno
+        /// </summary>
+        public double m1b_tot;
+
+        /// <summary>
+        /// M1a mese corrente
+        /// </summary>
+        public double m1a_month;
+
+        /// <summary>
+        /// M1b mese corrente
+        /// </summary>
+        public double m1b_month;
+    }
+
     #endregion
 
     /// <summary>
@@ -554,6 +615,122 @@ namespace WetLib
             }
 
             return is_in_alarm;
+        }
+
+        /// <summary>
+        /// Restituisce il vettore dell'indice M1a da inizio anno alla data specificata
+        /// </summary>
+        /// <param name="id_district">ID del distretto</param>
+        /// <param name="date">Data di calcolo</param>
+        /// <returns>Lista con le strutture dati</returns>
+        public static List<PI_M1_Month_Struct> GetPI_M1(int id_district, DateTime date)
+        {
+            WetConfig wcfg = null;
+            WetDBConn wet_db = null;
+            List<PI_M1_Month_Struct> m1_list = new List<PI_M1_Month_Struct>();
+
+            try
+            {
+                DateTime start_dt = new DateTime(date.Year, 1, 1);
+                DateTime end_dt = new DateTime(date.Year, date.Month, date.Day).AddDays(1);
+                // Leggo il vettore dei dati dal database
+                wcfg = new WetConfig();
+                wet_db = new WetDBConn(wcfg.GetWetDBDSN(), null, null, true);
+                DataTable dt = wet_db.ExecCustomQuery("SELECT `timestamp`, `value` FROM data_districts WHERE `districts_id_districts` = " + id_district.ToString() +
+                    " AND `timestamp` >= '" + start_dt.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` < '" + end_dt.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "'");
+                // Leggo i campi di lunghezza delle condotte e acqua contabilizzata
+                DataTable district = wet_db.ExecCustomQuery("SELECT `length_main`, `rewarded_water` FROM districts WHERE `id_districts` = " + id_district);
+                double length_main = 0.0d;
+                double rewarded_water = 0.0d;
+                if (district.Rows.Count == 0)
+                    throw new Exception("District #" + id_district + " not found!");
+                else
+                {
+                    length_main = WetMath.ValidateDouble(Convert.ToDouble(district.Rows[0]["length_main"]));
+                    rewarded_water = WetMath.ValidateDouble(Convert.ToDouble(district.Rows[0]["rewarded_water"]));
+                }
+                if (length_main == 0.0)
+                    throw new Exception("'length_main' must be > 0!!");
+                // Sposto i valori letti in un dizionario
+                Dictionary<DateTime, double> values = new Dictionary<DateTime, double>();
+                foreach (DataRow dr in dt.Rows)
+                {
+                    DateTime dt_row = Convert.ToDateTime(dr["timestamp"]);
+                    double val_row = Convert.ToDouble(dr["value"]);
+                    values.Add(dt_row, val_row);
+                }
+                // Numero di mesi da analizzare
+                int months = date.Month;
+                // Creo la lista dei giorni trascorsi da inizio anno
+                List<int> days_from_start_year = new List<int>();
+                // Creo la lista delle medie mensili fu finestra crescente
+                List<double> avg_months = new List<double>();
+                // Creo la lista dei volumi mensili
+                List<double> vol_month = new List<double>();
+                // Creo la lista dei volumi cumulati mensili
+                List<double> vol_cum = new List<double>();
+                // Creo la lista degli indici M1a cumulato
+                List<double> m1a_cum = new List<double>();
+                // Creo la lista degli indici M1b cumulato
+                List<double> m1b_cum = new List<double>();
+                // Creo lista degli indici M1a mensile
+                List<double> m1a_month = new List<double>();
+                // Creo lista degli indici M1b mensile
+                List<double> m1b_month = new List<double>();
+                // Ciclo per tutti i mesi da analizzare
+                for (int month = 1; month <= months; month++)
+                {
+                    if (month == months)
+                    {
+                        // L'ultimo mese devo considerare il giorno richiesto
+                        days_from_start_year.Add((date - start_dt).Days + 1);
+                    }
+                    else
+                    {
+                        // Se non sono all'ultimo mese devo considerare il mese intero
+                        DateTime tmp_dt = new DateTime(date.Year, month, DateTime.DaysInMonth(date.Year, month));
+                        days_from_start_year.Add((tmp_dt - start_dt).Days + 1);
+                    }
+                    // Calcolo la media mensile
+                    avg_months.Add(values.Where(x => x.Key.Month < month + 1).Average(y => y.Value));
+                    // Calcolo il volume mensile
+                    vol_month.Add(values.Where(x => x.Key.Month == month).Average(y => y.Value) * 3.60d * 24.0d * DateTime.DaysInMonth(date.Year, month));
+                    // Calcolo il volume mensile cumulato, se sono a Gennaio prendo solo il volume del mese, altrimenti aggiungo a quello del mese il cumulato precedente
+                    if (month == 1)
+                        vol_cum.Add(vol_month[month - 1]);
+                    else
+                        vol_cum.Add(vol_month[month - 1] + vol_cum[month - 2]);
+                    // Calcolo l'indice M1a cumulato
+                    m1a_cum.Add((vol_cum[month - 1] - (rewarded_water * 3.60d * 24.0d * days_from_start_year[month - 1])) / ((length_main / 1000.0d) * days_from_start_year[month - 1]));
+                    // Calcolo l'indice M1b cumulato
+                    m1b_cum.Add((vol_cum[month - 1] - (rewarded_water * 3.60d * 24.0d * days_from_start_year[month - 1])) / vol_cum[month - 1]);
+                    // Calcolo l'indice M1a mensile
+                    m1a_month.Add((vol_month[month - 1] - (rewarded_water * 3.60d * 24.0d * DateTime.DaysInMonth(date.Year, month))) / ((length_main / 1000.0d) * DateTime.DaysInMonth(date.Year, month)));
+                    // Calcolo l'indice M1b mensile
+                    m1b_month.Add((vol_month[month - 1] - (rewarded_water * 3.60d * 24.0d * DateTime.DaysInMonth(date.Year, month))) / vol_month[month - 1]);
+
+                    // Popolo la struttura
+                    PI_M1_Month_Struct m1;
+                    m1.month = new DateTime(date.Year, month, DateTime.DaysInMonth(date.Year, month));  // Uso sempre l'ultimo giorno del mese
+                    m1.days_in_month = DateTime.DaysInMonth(date.Year, month);
+                    m1.days_in_year = days_from_start_year[month - 1];
+                    m1.avg_month = values.Where(x => x.Key.Month == month).Average(y => y.Value);
+                    m1.avg_days_in_year = avg_months[month - 1];
+                    m1.vol_month = vol_month[month - 1];
+                    m1.vol_tot = vol_cum[month - 1];
+                    m1.m1a_month = m1a_month[month - 1];
+                    m1.m1b_month = m1b_month[month - 1];
+                    m1.m1a_tot = m1a_cum[month - 1];
+                    m1.m1b_tot = m1b_cum[month - 1];
+                    m1_list.Add(m1);
+                }
+            }
+            catch (Exception ex)
+            {
+                WetDebug.GestException(ex);
+            }
+
+            return m1_list;
         }
 
         #endregion

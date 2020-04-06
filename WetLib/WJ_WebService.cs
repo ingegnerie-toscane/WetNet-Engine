@@ -83,6 +83,14 @@ namespace WetLib
             [WebGet]
             Stream GetDayTrendsByIdGis(string id_gis, string start_date);
 
+            [OperationContract]
+            [WebGet]
+            Stream GetPIM1DataCSV(string id_district, string date);
+
+            [OperationContract]
+            [WebGet]
+            Stream GetPIM1Data(string id_district, string date);
+
             #endregion
         }
 
@@ -1287,6 +1295,108 @@ namespace WetLib
                 {
                     WetDebug.GestException(ex);
                 }
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.ContentType = "text/plain";
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
+            }
+
+            /// <summary>
+            /// Restituisce il calcolo dell'M1 in formato CSV per un dato distretto rispetto alla data specificata
+            /// </summary>
+            /// <param name="id_district">ID del distretto</param>
+            /// <param name="date">Data finale di calcolo da inizio anno</param>
+            /// <returns>File CSV</returns>
+            public Stream GetPIM1DataCSV(string id_district, string date)
+            {
+                int id = 0;
+                DateTime dt = new DateTime();
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append("MONTH;DAYS_IN_MONTH;DAYS_SINCE_START_YEAR;AVG_MONTH;AVG_SINCE_START_YEAR;VOL_MONTH;VOL_SINCE_START_YEAR;M1A_MONTH;M1B_MONTH;M1A_SINCE_START_YEAR;M1B_SINCE_START_YEAR;" + Environment.NewLine);
+                try
+                {
+                    // Imposto i parametri                    
+                    id = Convert.ToInt32(id_district);
+                    dt = Convert.ToDateTime(date);
+                    // Calcolo l'M1 e popolo la lista dei dati
+                    List<PI_M1_Month_Struct> m1_list = WetUtility.GetPI_M1(id, dt);
+                    // Ciclo per ciascun elemento
+                    foreach (PI_M1_Month_Struct m1 in m1_list)
+                    {
+                        sb.Append(m1.month.ToString("yyyy-MM-dd") + ";");
+                        sb.Append(m1.days_in_month.ToString() + ";");
+                        sb.Append(m1.days_in_year.ToString() + ";");
+                        sb.Append(m1.avg_month.ToString().Replace(',', '.') + ";");
+                        sb.Append(m1.avg_days_in_year.ToString().Replace(',', '.') + ";");
+                        sb.Append(m1.vol_month.ToString().Replace(',', '.') + ";");
+                        sb.Append(m1.vol_tot.ToString().Replace(',', '.') + ";");
+                        sb.Append(m1.m1a_month.ToString().Replace(',', '.') + ";");
+                        sb.Append(m1.m1b_month.ToString().Replace(',', '.') + ";");
+                        sb.Append(m1.m1a_tot.ToString().Replace(',', '.') + ";");
+                        sb.Append(m1.m1b_tot.ToString().Replace(',', '.') + ";");
+                        sb.Append(Environment.NewLine);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+
+                // Composizione risposta
+                OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
+                context.Headers["Content-Disposition"] = "attachment; filename=" + id.ToString() + "_" + dt.ToString("yyyyMMdd") + "_PIM1Data.csv";
+                context.ContentType = "application/octet-stream";
+                return new MemoryStream(Encoding.Default.GetBytes(sb.ToString()));
+            }
+
+            /// <summary>
+            /// Restituisce il calcolo dell'M1 in formato XML per un dato distretto rispetto alla data specificata
+            /// </summary>
+            /// <param name="id_district">ID del distretto</param>
+            /// <param name="date">Data finale di calcolo da inizio anno</param>
+            /// <returns>File CSV</returns>
+            public Stream GetPIM1Data(string id_district, string date)
+            {
+                int id = 0;
+                DateTime dt = new DateTime();
+                StringBuilder sb = new StringBuilder();
+
+                sb.Append("<?xml version =\"1.0\"?>");
+
+                sb.Append("<M1Values>");
+                try
+                {
+                    // Imposto i parametri                    
+                    id = Convert.ToInt32(id_district);
+                    dt = Convert.ToDateTime(date);
+                    // Calcolo l'M1 e popolo la lista dei dati
+                    List<PI_M1_Month_Struct> m1_list = WetUtility.GetPI_M1(id, dt);
+                    // Ciclo per ciascun elemento
+                    foreach (PI_M1_Month_Struct m1 in m1_list)
+                    {
+                        sb.Append("<M1Value>");
+                        sb.Append("<Month>" + m1.month.ToString("yyyy-MM-dd") + "</Month>");
+                        sb.Append("<DaysInMonth>" + m1.days_in_month.ToString() + "</DaysInMonth>");
+                        sb.Append("<DaysSinceStartYear>" + m1.days_in_year.ToString() + "</DaysSinceStartYear>");
+                        sb.Append("<AvgMonth>" + m1.avg_month.ToString().Replace(',', '.') + "</AvgMonth>");
+                        sb.Append("<AvgSinceStartYear>" + m1.avg_days_in_year.ToString().Replace(',', '.') + "</AvgSinceStartYear>");
+                        sb.Append("<VolMonth>" + m1.vol_month.ToString().Replace(',', '.') + "</VolMonth>");
+                        sb.Append("<VolSinceStartYear>" + m1.vol_tot.ToString().Replace(',', '.') + "</VolSinceStartYear>");
+                        sb.Append("<M1aMonth>" + m1.m1a_month.ToString().Replace(',', '.') + "</M1aMonth>");
+                        sb.Append("<M1bMonth>" + m1.m1b_month.ToString().Replace(',', '.') + "</M1bMonth>");
+                        sb.Append("<M1aSinceStartYear>" + m1.m1a_tot.ToString().Replace(',', '.') + "</M1aSinceStartYear>");
+                        sb.Append("<M1bSinceStartYear>" + m1.m1b_tot.ToString().Replace(',', '.') + "</M1bSinceStartYear>");
+                        sb.Append("</M1Value>");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    WetDebug.GestException(ex);
+                }
+
+                sb.Append("</M1Values>");
 
                 // Composizione risposta
                 OutgoingWebResponseContext context = WebOperationContext.Current.OutgoingResponse;
