@@ -483,12 +483,12 @@ namespace WetLib
                         " WHERE History.TagName = '" + measure_coord.value_column + "'" +
                         " AND vValue IS NOT NULL " +
                         "AND (Quality = 0 OR Quality = 1) " +
-                        "AND (QualityDetail = 192 OR QualityDetail = 202 OR QualityDetail = 64 OR QualityDetail = 448) " +
+                        "AND (QualityDetail = 192 OR QualityDetail = 202 OR QualityDetail = 64 OR QualityDetail = 448 OR QualityDetail = 85 OR QualityDetail = 86) " +
                         //"AND wwResolution = " + ((int)(config.interpolation_time * 60 * 1000)).ToString() + " " +
                         //"AND wwRetrievalMode = 'Cyclic' " +
                         "AND wwRetrievalMode = 'Full' " +
-                        "AND wwCycleCount = " + WetDBConn.MAX_RECORDS_IN_QUERY.ToString() + " " +
-                        "AND wwVersion = 'Latest'" +
+                        //"AND wwCycleCount = " + WetDBConn.MAX_RECORDS_IN_QUERY.ToString() + " " +
+                        "AND wwVersion = 'Latest' " +
                         "AND DateTime > CONVERT(datetime, '" + start_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', 120) " +
                         "AND DateTime <= CONVERT(datetime, '" + stop_date.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "', 120) ORDER BY " +
                         measure_coord.timestamp_column + (order == WetDBConn.OrderTypes.ASC ? " ASC" : " DESC");

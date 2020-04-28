@@ -777,7 +777,24 @@ namespace WetLib
                                                 last_day = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));
                                         }
                                         else
-                                            last_day = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));
+                                        {
+                                            bool can_update = false;
+
+                                            // Controllo quando è stato l'ultimo evento di fuori controllo
+                                            DataTable last_bad_event = wet_db.ExecCustomQuery("SELECT `day` FROM districts_events WHERE `type` = " + EventTypes.OUT_OF_CONTROL.ToString() + " AND `districts_id_districts` = " + id_district.ToString() + " ORDER BY `day` DESC LIMIT 1");
+                                            if (last_bad_event.Rows.Count > 0)
+                                            {
+                                                DateTime lbe = Convert.ToDateTime(last_bad_event.Rows[0]["day"]);
+                                                TimeSpan diff = DateTime.Now.Date - lbe.Date;
+                                                if (diff.Days > last_good_samples)
+                                                    can_update = true;
+                                            }
+
+                                            if (can_update)
+                                                last_day = DateTime.Now.Date.Subtract(new TimeSpan(1, 0, 0, 0));    // Ho un numero sufficiente di eventi di ottimizzazione consecutivi senza "fuori controllo"
+                                            else
+                                                last_day = last_good_day;   // Non sono passati abbastanza giorni per il ricalcolo dei parametri, li calcolo basandomi sui valori impostati
+                                        }
                                     }
                                     else
                                         last_day = last_good_day;
