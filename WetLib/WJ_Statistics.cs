@@ -379,7 +379,7 @@ namespace WetLib
                             double min_night = double.NaN;
                             DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM data_measures WHERE `measures_id_measures` = " + id_measure.ToString() + " AND (`timestamp` >= '" + dt_min_night_start_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_min_night_stop_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "') ORDER BY `timestamp` ASC");
                             if (dt.Rows.Count > 0)
-                                min_night = WetStatistics.GetMean(WetUtility.GetDoubleValuesFromColumn(dt, "value"));
+                                min_night = WetStatistics.GetMedian(WetUtility.GetDoubleValuesFromColumn(dt, "value"));
                             if (!double.IsNaN(min_night))
                             {
                                 int count = wet_db.ExecCustomCommand("UPDATE measures_day_statistic SET `min_night` = " + min_night.ToString().Replace(',', '.') +
@@ -731,7 +731,7 @@ namespace WetLib
                             double nfcu = Convert.ToDouble(district["household_night_use"]) + Convert.ToDouble(district["not_household_night_use"]);
                             DataTable dt = wet_db.ExecCustomQuery("SELECT * FROM data_districts WHERE `districts_id_districts` = " + id_district.ToString() + " AND (`timestamp` >= '" + dt_min_night_start_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "' AND `timestamp` <= '" + dt_min_night_stop_time.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) + "') ORDER BY `timestamp` ASC");
                             if (dt.Rows.Count > 0)
-                                min_night = WetStatistics.GetMean(WetUtility.GetDoubleValuesFromColumn(dt, "value"));
+                                min_night = WetStatistics.GetMedian(WetUtility.GetDoubleValuesFromColumn(dt, "value"));
                             if (!double.IsNaN(min_night))
                             {
                                 real_leakage = min_night - nfcu;

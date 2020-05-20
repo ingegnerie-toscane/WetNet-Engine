@@ -107,6 +107,31 @@ namespace WetLib
         }
 
         /// <summary>
+        /// Restituisce la mediana di un buffer
+        /// </summary>
+        /// <param name="values">Buffer dei valori</param>
+        /// <returns>Mediana</returns>
+        public static double GetMedian(double[] values)
+        {
+            double[] tmp_val = values;
+            double median = 0.0;
+            long elements = tmp_val.LongLength;
+
+            if (elements > 0)
+            {
+                long half_index = elements / 2;
+
+                tmp_val.OrderBy(x => x);
+                if ((elements % 2) == 0)
+                    median = (tmp_val[half_index] + tmp_val[half_index - 1]) / 2.0d;
+                else
+                    median = tmp_val[half_index];
+            }
+
+            return median;
+        }
+
+        /// <summary>
         /// Effettua una correlazione di Pearson fra 2 misure
         /// </summary>
         /// <param name="id_first_measure">ID prima misura</param>
