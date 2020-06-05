@@ -135,6 +135,22 @@ namespace WetLib
         #region Funzioni del modulo
 
         /// <summary>
+        /// Restituisce true se mi trovo in un intervallo di tempo valido per l'interpolazione
+        /// </summary>
+        /// <param name="dt">Timestamp da analizzare</param>
+        /// <returns><c>true</c>Posso interpolare <c>false</c>Non posso interpolare</returns>
+        public static bool CanIterpolate(DateTime dt)
+        {
+            DateTime dl_start = TimeZone.CurrentTimeZone.GetDaylightChanges(dt.Year).Start;
+            DateTime dl_start_end = dl_start.AddHours(1.0);
+
+            if ((dt >= dl_start) && (dt < dl_start_end))
+                return false;
+            else
+                return true;
+        }
+
+        /// <summary>
         /// Restituisce una oggetto di tipo "DateTime" con data corrente e ora estratta dalla stringa specificata
         /// </summary>
         /// <param name="time_str">Stringa con l'ora</param>

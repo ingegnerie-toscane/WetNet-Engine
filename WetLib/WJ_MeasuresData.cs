@@ -175,6 +175,17 @@ namespace WetLib
             {
                 try
                 {
+                    // Controllo se sono nel giorno di passaggio dall'ora legale all'ora solare
+                    DateTime is_legal_solar_day = TimeZone.CurrentTimeZone.GetDaylightChanges(DateTime.Now.Year).End;
+                    if (DateTime.Now.Date == is_legal_solar_day.Date)
+                    {
+                        if (DateTime.Now.Hour < 4)
+                        {
+                            // Rimango in attesa di arrivare alle 4 di mattina
+                            Sleep(1000);
+                            continue;
+                        }
+                    }
                     // Acquisisco l'ID univoco della misura
                     int id_measure = Convert.ToInt32(measure["id_measures"]);
                     int id_odbc_dsn = Convert.ToInt32(measure["connections_id_odbcdsn"]);

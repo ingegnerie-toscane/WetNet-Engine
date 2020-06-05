@@ -62,6 +62,11 @@ namespace WetLib
         /// </summary>
         public const int CORRELATION_CHECK_HOURS = 4;
 
+        /// <summary>
+        /// Numero massimo di giorni retroattivi su cui fare l'analisi (meccanismo anti-bloccaggio)
+        /// </summary>
+        public const int MAX_RETRO_DAYS_FOR_SESSION = 7;
+
         #endregion
 
         #region Istanze
@@ -937,17 +942,22 @@ namespace WetLib
                                 if (upd_cnt != 1)
                                     throw new Exception("Unattempted error while updating district energy statistic record!");
                             }
+                            
                             // Passo il controllo al S.O. per l'attesa
                             if (cancellation_token_source.IsCancellationRequested)
                                 return;
                             Sleep();
+
+                            // Controllo se ho raggiunto il numero massimo di giorni consecutivi per prevenire loop di blocco
+                            if (ii == (MAX_RETRO_DAYS_FOR_SESSION - 1))
+                                break;
                         }
                         // Controllo se devo aggiornare il campo di reset
                         if (reset_all_data == (id_district + 2))
                         {
                             // Aggiorno il campo di reset
                             wet_db.ExecCustomCommand("UPDATE districts SET `reset_all_data` = 0 WHERE id_districts = " + id_district.ToString());
-                        }
+                        }                        
                         // Passo il controllo al S.O. per l'attesa
                         if (cancellation_token_source.IsCancellationRequested)
                             return;

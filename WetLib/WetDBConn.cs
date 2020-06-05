@@ -369,11 +369,12 @@ namespace WetLib
                 {
                     WetDebug.GestException(ex, query + Environment.NewLine + "Connessione: " + conn.ConnectionString);
                 }
+                /*
                 finally
                 {
                     if (conn != null)
                         conn.Close();
-                }
+                }*/
             }
 
             return dt;
@@ -403,14 +404,16 @@ namespace WetLib
                 {
                     WetDebug.GestException(ex, command + Environment.NewLine + "Connessione: " + conn.ConnectionString);
                 }
+                /*
                 finally
                 {
                     if (conn != null)
-                        conn.Close();
-                    Thread.Sleep(1000);
-                }
+                        conn.Close();                    
+                    //Thread.Sleep(1000);
+                }*/
             }
-
+            Thread.Sleep(1000);
+            
             return ret;
         }
 

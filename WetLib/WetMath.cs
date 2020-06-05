@@ -73,31 +73,37 @@ namespace WetLib
                 {
                     if (serie.ElementAt(ii).Key >= stop)
                     {
-                        // Interpolo
-                        double y0 = ValidateDouble(serie.ElementAt(jj).Value);
-                        double y1 = ValidateDouble(serie.ElementAt(ii).Value);
-                        double x0 = Convert.ToDouble(serie.ElementAt(jj).Key.Ticks);
-                        double x1 = Convert.ToDouble(serie.ElementAt(ii).Key.Ticks);
-                        double x = Convert.ToDouble(stop.Ticks);
-                        double y = ValidateDouble((((y1 - y0) * (x - x0)) / (x1 - x0)) + y0);
-                        if (measure_type == MeasureTypes.DIGITAL_STATE)
+                        // Controllo validità timestamp per passaggio ora solare->legale
+                        bool can_interpolate_x0 = WetUtility.CanIterpolate(serie.ElementAt(jj).Key);
+                        bool can_interpolate_x1 = WetUtility.CanIterpolate(serie.ElementAt(ii).Key);
+                        if ((can_interpolate_x0 == true) && (can_interpolate_x1 == true))
                         {
-                            if ((y != 0.0d) && (y != 1.0d))
+                            // Interpolo
+                            double y0 = ValidateDouble(serie.ElementAt(jj).Value);
+                            double y1 = ValidateDouble(serie.ElementAt(ii).Value);
+                            double x0 = Convert.ToDouble(serie.ElementAt(jj).Key.Ticks);
+                            double x1 = Convert.ToDouble(serie.ElementAt(ii).Key.Ticks);
+                            double x = Convert.ToDouble(stop.Ticks);
+                            double y = ValidateDouble((((y1 - y0) * (x - x0)) / (x1 - x0)) + y0);
+                            if (measure_type == MeasureTypes.DIGITAL_STATE)
                             {
-                                // Controllo di congruenza valore precedente
-                                if (y0 < 0.0d)
-                                    y0 = 0.0d;
-                                else if (y0 > 1.0d)
-                                    y0 = 1.0d;
-                                else
-                                    y0 = Math.Round(y0);
-                                
-                                // Assegno al valore attuale lo stato precedente
-                                y = y0;
+                                if ((y != 0.0d) && (y != 1.0d))
+                                {
+                                    // Controllo di congruenza valore precedente
+                                    if (y0 < 0.0d)
+                                        y0 = 0.0d;
+                                    else if (y0 > 1.0d)
+                                        y0 = 1.0d;
+                                    else
+                                        y0 = Math.Round(y0);
+
+                                    // Assegno al valore attuale lo stato precedente
+                                    y = y0;
+                                }
                             }
+                            // Aggiungo il valore
+                            return_serie.Add(stop, y);
                         }
-                        // Aggiungo il valore
-                        return_serie.Add(stop, y);
                         // Aggiorno i contatori
                         if ((serie.ElementAt(ii).Key - stop) <= interpolation_time)
                             jj = ii++;
