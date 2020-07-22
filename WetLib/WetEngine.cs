@@ -93,6 +93,11 @@ namespace WetLib
         /// </summary>
         WJ_WebService wj_web_service;
 
+        /// <summary>
+        /// Job per gli eventi su previsione
+        /// </summary>
+        WJ_ForecastEvents wj_forecast_events;
+
         #endregion
 
         #region Variabili globali
@@ -121,6 +126,7 @@ namespace WetLib
             wj_events = new WJ_Events();
             wj_measures_alarms = new WJ_MeasuresAlarms();
             wj_web_service = new WJ_WebService();
+            wj_forecast_events = new WJ_ForecastEvents();
         }
 
         #endregion
@@ -142,6 +148,7 @@ namespace WetLib
             wj_events.Start();
             wj_measures_alarms.Start();
             wj_web_service.Start();
+            wj_forecast_events.Start();
         }
 
         /// <summary>
@@ -167,6 +174,7 @@ namespace WetLib
             wj_events.Stop();
             wj_measures_alarms.Stop();
             wj_web_service.Stop();
+            wj_forecast_events.Stop();
         }
 
         #endregion

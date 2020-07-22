@@ -66,6 +66,7 @@
     <Compile Include="WJ_Agent_WetNetLinkBox.cs" />
     <Compile Include="WJ_DistrictsBalance.cs" />
     <Compile Include="WJ_Events.cs" />
+    <Compile Include="WJ_ForecastEvents.cs" />
     <Compile Include="WJ_MeasuresAlarms.cs" />
     <Compile Include="WJ_Statistics.cs" />
     <Compile Include="WJ_Agent_LCF.cs" />

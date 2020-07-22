@@ -49,7 +49,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug_v2|x64'">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>Y:\</OutputPath>
+    <OutputPath>Z:\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <DebugType>full</DebugType>
     <PlatformTarget>x64</PlatformTarget>
