@@ -261,7 +261,7 @@ namespace WetLib
                         // Acquisisco la banda superiore statistica
                         double statistic_high_band = Convert.ToDouble(district["ev_statistic_high_band"]);
                         // Acquisisco la banda inferiore statistica
-                        double statistic_low_band = Convert.ToDouble(district["ev_statistic_low_band"]);
+                        double statistic_low_band = Convert.ToDouble(district["ev_statistic_low_band"]);                      
                         // Controllo che ci sia almeno un record nello storico delle bande
                         DataTable dt_bands = wet_db.ExecCustomQuery("SELECT * FROM districts_bands_history WHERE districts_id_districts = " + id_district.ToString() +
                             " ORDER BY `timestamp` DESC LIMIT 1");
@@ -282,7 +282,7 @@ namespace WetLib
                             if ((last_high_band != high_band) || (last_low_band != low_band))
                                 wet_db.ExecCustomCommand("INSERT INTO districts_bands_history VALUES ('" + DateTime.Now.ToString(WetDBConn.MYSQL_DATETIME_FORMAT) +
                                 "', " + high_band.ToString().Replace(",", ".") + ", " + low_band.ToString().Replace(",", ".") + ", " + id_district.ToString() + ")");
-                        }
+                        }                        
                         // Acquisisco tipo di variabile statistica da utilizzare
                         DistrictStatisticMeasureTypes measure_type = (DistrictStatisticMeasureTypes)(Convert.ToInt32(district["ev_variable_type"]));
                         // Acquisisco l'ultimo giorno valido
@@ -351,6 +351,32 @@ namespace WetLib
                         {
                             // Imposto il giorno in analisi
                             DateTime actual = DateTime.Now.Subtract(new TimeSpan(days, 0, 0, 0)).Date;
+
+                            #region Gestione delle bande stagionali
+
+                            // Controllo se ci sono profili stagionali sulle bande
+                            DataTable dhbp = wet_db.ExecCustomQuery("SELECT * FROM districts_has_bands_profiles WHERE `districts_id_districts` = " + id_district.ToString());
+                            if (dhbp.Rows.Count > 0)
+                            {
+                                // E' presente un profilo, lo gestisco
+                                int disctrict_band_profile = Convert.ToInt32(dhbp.Rows[0]["bands_profiles_idbands_profiles"]);
+                                // Acquisisco il giorno corrente ed il mese corrente
+                                int today_month = actual.Month;
+                                int today_day = actual.Day;
+                                // Controllo se c'è un record per il giorno
+                                DataTable bpc = wet_db.ExecCustomQuery("SELECT * FROM bands_profiles_coefficients WHERE `bands_profiles_idbands_profiles` = " + disctrict_band_profile.ToString() + " AND `month` = " + today_month.ToString() + " AND `day` = " + today_day.ToString());
+                                if (bpc.Rows.Count > 0)
+                                {
+                                    // E' presente il record per il giorno, lo elaboro
+                                    double coefficient = Convert.ToDouble(bpc.Rows[0]["coefficient"]);
+                                    double delta = Convert.ToDouble(bpc.Rows[0]["delta"]);
+                                    // Aggiorno le bande per il calcolo
+                                    high_band = coefficient + delta;
+                                    low_band = coefficient - delta;
+                                }
+                            }
+
+                            #endregion
 
                             #region Gestione distretto fuori controllo                            
 
